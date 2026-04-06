@@ -31,16 +31,21 @@ class MainActivity : ComponentActivity() {
                         )
                         Button(
                             onClick = {
+                                print("onclickkkk")
                                 val client = NetraClient.Builder()
-                                    .baseUrl("https://api.github.com/users/octocat/repos")
+                                    .baseUrl("https://api.github.com")
                                     .addConverterFactory(
                                         NetraGsonConverter()
                                     ).build()
 
-                                client.get("https://api.github.com/users/octocat/repos")
-                                    .asList<Repo>().enqueue { result ->
-                                        print("result: ${result?.get(0)?.name}}")
-                                    }
+                                val response = client.get("/users/octocat/repos")
+                                    .asList<Repo>()
+                                    .execute()
+
+                                print("response execute: ${response.get(0)?.name}")
+//                                    .enqueue { result ->
+//                                        print("result: ${result?.get(0)?.name}}")
+//                                    }
                             }
                         ) {
                             Text(

@@ -2,6 +2,7 @@ package com.netra.library
 
 import com.google.gson.reflect.TypeToken
 import com.netra.library.converter.IConverter
+import com.netra.library.converter.NetraGsonConverter
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.OkHttpClient
@@ -39,30 +40,30 @@ class NetraClient private constructor(
 
     fun get(path: String): RequestBuilder {
         val client = OkHttpClient().newBuilder().build()
-        return RequestBuilder(client, path, converter)
+        return RequestBuilder(client, baseUrl!!, path, converter)
     }
 }
 
-class RequestBuilder(val client: OkHttpClient, val path: String, val converter: IConverter?) {
-    inline fun <reified T> asList(): TypedCall<List<T>> {
+class RequestBuilder(val client: OkHttpClient, val baseUrl: String, val path: String, val converter: IConverter?) {
+    inline fun <reified T> asList(): NetraCall<List<T>> {
         val type = object : TypeToken<List<T>>() {}.type
-        return TypedCall(client, path, type, converter)
+        return NetraCall(client, baseUrl, path, type, converter)
     }
 
-    inline fun <reified T> asObject(): TypedCall<T> {
-        return TypedCall(client, path, T::class.java, converter)
+    inline fun <reified T> asObject(): NetraCall<T> {
+        return NetraCall(client, baseUrl, path, T::class.java, converter)
     }
 }
 
-class TypedCall<T>(
+class NetraCall<T>(
     val client: OkHttpClient,
+    val baseUrl: String,
     val path: String,
     val type: Type,
     val converter: IConverter?,
 ) {
+    val request = Request.Builder().url(baseUrl + path).build()
     fun enqueue(callback: (T?) -> Unit) {
-        val request = Request.Builder().url(path).build()
-
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 println("Error: ${e.message}")
@@ -70,16 +71,29 @@ class TypedCall<T>(
             }
 
             override fun onResponse(call: Call, response: Response) {
-                val body = response.body
-                println("Data: $body")
-
                 if (converter != null) {
                     val convertedResult: T = converter.convert(response.body.bytes(), type)
                     callback(convertedResult)
                 } else {
-                    //todo
+                    val convertedResult: T =
+                        NetraGsonConverter().convert(response.body.bytes(), type)
+                    callback(convertedResult)
                 }
             }
         })
     }
+
+    fun execute(): T {
+        val response = client.newCall(request).execute()
+        if (converter != null) {
+            val convertedResult: T = converter.convert(response.body.bytes(), type)
+            return convertedResult
+        } else {
+            val convertedResult: T = NetraGsonConverter().convert(response.body.bytes(), type)
+            return convertedResult
+        }
+    }
 }
+
+//todo:
+// what are difference retrofit builder vs netra builder?
