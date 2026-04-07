@@ -2,7 +2,7 @@ package com.netra.library
 
 import okhttp3.*
 
-class MyBehaviorInterceptor(private val listener: SdkStatusListener): Interceptor {
+class MyBehaviorInterceptor: Interceptor {
     val maxRetries = 3
 
     private fun shouldRetry(response: Response): Boolean {
@@ -16,11 +16,12 @@ class MyBehaviorInterceptor(private val listener: SdkStatusListener): Intercepto
         val request = chain.request()
         var response = chain.proceed(request)
         var attempt = 1
+        val reporter = request.tag(StatusReporter::class.java)
 
         while (!response.isSuccessful && attempt < maxRetries && shouldRetry(response)) {
             println("Response failed. Attempt $attempt of $maxRetries")
             attempt++
-            listener.attempt(attempt)
+            reporter?.onStatusUpdate(Status.Retrying(attempt))
             response.close()
             response = chain.proceed(request)
         }

@@ -15,13 +15,7 @@ class NetraClient private constructor(
     var baseUrl: String? = null,
     var converter: IConverter? = null,
 ) {
-    val myListener = object : SdkStatusListener {
-        override fun attempt(count: Int): Status {
-            return Status.Retrying(count)
-            ///sendToBridge(mapOf("status" to "retrying", "attempt" to count)) // will adding when starting bridge side.
-        }
-    }
-    val client = OkHttpClient().newBuilder().addInterceptor(MyBehaviorInterceptor(myListener)).build()
+    val client = OkHttpClient().newBuilder().addInterceptor(MyBehaviorInterceptor()).build()
 
     data class Builder(
         var baseUrl: String? = null,
@@ -62,6 +56,8 @@ class RequestBuilder(val client: OkHttpClient, val baseUrl: String, val path: St
     }
 }
 
+class StatusReporter(val onStatusUpdate: (Status) -> Unit)
+
 class NetraCall<T>(
     val client: OkHttpClient,
     val baseUrl: String,
@@ -69,8 +65,10 @@ class NetraCall<T>(
     val type: Type,
     val converter: IConverter?,
 ) {
-    val request = Request.Builder().url(baseUrl + path).build()
     fun enqueue(callback: (Status?) -> Unit) {
+        val reporter = StatusReporter(callback)
+        val request = Request.Builder().tag(StatusReporter::class.java, reporter).url(baseUrl + path).build()
+
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 callback(Status.Error(e.message))
@@ -89,16 +87,17 @@ class NetraCall<T>(
         })
     }
 
-    fun execute(): T {
-        val response = client.newCall(request).execute()
-        if (converter != null) {
-            val convertedResult: T = converter.convert(response.body.bytes(), type)
-            return convertedResult
-        } else {
-            val convertedResult: T = NetraGsonConverter().convert(response.body.bytes(), type)
-            return convertedResult
-        }
-    }
+    //todo
+//    fun execute(): T {
+//        val response = client.newCall(request).execute()
+//        if (converter != null) {
+//            val convertedResult: T = converter.convert(response.body.bytes(), type)
+//            return convertedResult
+//        } else {
+//            val convertedResult: T = NetraGsonConverter().convert(response.body.bytes(), type)
+//            return convertedResult
+//        }
+//    }
 }
 
 //todo:
