@@ -13,8 +13,16 @@ import java.lang.reflect.Type
 
 class NetraClient private constructor(
     var baseUrl: String? = null,
-    var converter: IConverter? = null
+    var converter: IConverter? = null,
 ) {
+    val myListener = object : SdkStatusListener {
+        override fun attempt(count: Int): Status {
+            return Status.Retrying(count)
+            ///sendToBridge(mapOf("status" to "retrying", "attempt" to count)) // will adding when starting bridge side.
+        }
+    }
+    val client = OkHttpClient().newBuilder().addInterceptor(MyBehaviorInterceptor(myListener)).build()
+
     data class Builder(
         var baseUrl: String? = null,
         var converter: IConverter? = null
@@ -39,7 +47,6 @@ class NetraClient private constructor(
     }
 
     fun get(path: String): RequestBuilder {
-        val client = OkHttpClient().newBuilder().build()
         return RequestBuilder(client, baseUrl!!, path, converter)
     }
 }
@@ -63,21 +70,20 @@ class NetraCall<T>(
     val converter: IConverter?,
 ) {
     val request = Request.Builder().url(baseUrl + path).build()
-    fun enqueue(callback: (T?) -> Unit) {
+    fun enqueue(callback: (Status?) -> Unit) {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                println("Error: ${e.message}")
-                callback(null)
+                callback(Status.Error(e.message))
             }
 
             override fun onResponse(call: Call, response: Response) {
                 if (converter != null) {
                     val convertedResult: T = converter.convert(response.body.bytes(), type)
-                    callback(convertedResult)
+                    callback(Status.Success(convertedResult))
                 } else {
                     val convertedResult: T =
                         NetraGsonConverter().convert(response.body.bytes(), type)
-                    callback(convertedResult)
+                    callback(Status.Success(convertedResult))
                 }
             }
         })
