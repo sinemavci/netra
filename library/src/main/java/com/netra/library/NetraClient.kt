@@ -102,3 +102,7 @@ class NetraCall<T>(
 
 //todo:
 // what are difference retrofit builder vs netra builder?
+//  netraClient.get("/large-data")
+//   .slowMode() // This sets the header! // here
+//   .asObject<MyData>()
+//   .enqueue { status -> ... }

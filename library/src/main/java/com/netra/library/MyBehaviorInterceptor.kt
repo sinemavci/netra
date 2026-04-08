@@ -1,6 +1,7 @@
 package com.netra.library
 
 import okhttp3.*
+import java.util.concurrent.TimeUnit
 
 class MyBehaviorInterceptor: Interceptor {
     val maxRetries = 3
@@ -17,13 +18,15 @@ class MyBehaviorInterceptor: Interceptor {
         var response = chain.proceed(request)
         var attempt = 1
         val reporter = request.tag(StatusReporter::class.java)
+        val timeout = if(request.header("X-Priority") === "Slow") 60 else 10
 
-        while (!response.isSuccessful && attempt < maxRetries && shouldRetry(response)) {
+        while (!response.isSuccessful && attempt < maxRetries && shouldRetry(response) && !chain.call().isCanceled()) {
+            val updatedChain = chain.withConnectTimeout(timeout, TimeUnit.SECONDS)
             println("Response failed. Attempt $attempt of $maxRetries")
             attempt++
             reporter?.onStatusUpdate(Status.Retrying(attempt))
             response.close()
-            response = chain.proceed(request)
+            response = updatedChain.proceed(request)
         }
 
         return response
