@@ -1,32 +1,61 @@
 package com.netra.library
 
+import android.util.Log
 import okhttp3.*
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-class MyBehaviorInterceptor: Interceptor {
-    val maxRetries = 3
+class MyBehaviorInterceptor : Interceptor {
+    private val maxRetries = 5
 
     private fun shouldRetry(response: Response): Boolean {
         val code = response.code
-        // Only retry on server errors (500s) or specific timeouts
-        // Do NOT retry on 404, 401 (Unauthorized), or 403 (Forbidden)
-        return code in 500..599 || code == 408 // 408 is Request Timeout
+        // Retry on Server Errors (500-599) or Timeout (408)
+        return code in 500..599 || code == 408
     }
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
-        var response = chain.proceed(request)
-        var attempt = 1
         val reporter = request.tag(StatusReporter::class.java)
-        val timeout = if(request.header("X-Priority") === "Slow") 60 else 10
 
-        while (!response.isSuccessful && attempt < maxRetries && shouldRetry(response) && !chain.call().isCanceled()) {
-            val updatedChain = chain.withConnectTimeout(timeout, TimeUnit.SECONDS)
-            println("Response failed. Attempt $attempt of $maxRetries")
+        Log.e("NetraClient.globalFailureCount:", "NetraClient.globalFailureCount.get(): ${NetraClient.globalFailureCount.get()}")
+
+        if (NetraClient.globalFailureCount.get() >= 5) {
+            val timeSinceLastFailure = System.currentTimeMillis() - NetraClient.lastFailureTime
+            if (timeSinceLastFailure < 30000) {
+                throw IOException("Circuit is OPEN: Server is unstable. Try again later.")
+            } else {
+                NetraClient.globalFailureCount.set(0)
+            }
+        }
+
+        val isSlow = request.header("X-Priority") == "Slow"
+        val timeout = if (isSlow) 60L else 10L
+
+        val currentChain = chain
+            .withConnectTimeout(timeout.toInt(), TimeUnit.SECONDS)
+            .withReadTimeout(timeout.toInt(), TimeUnit.SECONDS)
+
+        var attempt = 1
+        var response: Response = currentChain.proceed(request)
+
+        while (!response.isSuccessful && shouldRetry(response) && attempt < maxRetries && !chain.call().isCanceled()) {
+
+            println("Response failed (Code: ${response.code}). Attempt $attempt of $maxRetries")
+            response.close()
+
             attempt++
             reporter?.onStatusUpdate(Status.Retrying(attempt))
-            response.close()
-            response = updatedChain.proceed(request)
+
+            Thread.sleep(1000 * attempt.toLong())
+            response = currentChain.proceed(request)
+        }
+
+        if (response.code >= 500) {
+            NetraClient.globalFailureCount.incrementAndGet()
+            NetraClient.lastFailureTime = System.currentTimeMillis()
+        } else if (response.isSuccessful) {
+            NetraClient.globalFailureCount.set(0)
         }
 
         return response

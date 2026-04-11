@@ -35,13 +35,14 @@ class MainActivity : ComponentActivity() {
                             onClick = {
                                 Log.e("click", "click")
                                 val client = NetraClient.Builder()
-                                    .baseUrl("https://api.github.com")
-                                    .addConverterFactory(
-                                        NetraGsonConverter()
-                                    ).build()
+                                    .baseUrl("http://10.0.2.2:3000")
+//                                    .addConverterFactory(
+//                                        NetraGsonConverter()
+//                                    )
+                                    .build()
 
-                                client.get("/users/octocat/repos")
-                                    .asList<Repo>()
+                                client.get("/?status=502")
+                                    .asList<Any>()
 //                                    .execute()
                                     .enqueue { result ->
                                         Log.e("result", result.toString())

@@ -2,7 +2,6 @@ package com.netra.library
 
 import com.google.gson.reflect.TypeToken
 import com.netra.library.converter.IConverter
-import com.netra.library.converter.NetraGsonConverter
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.OkHttpClient
@@ -10,6 +9,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okio.IOException
 import java.lang.reflect.Type
+import java.util.concurrent.atomic.AtomicInteger
 
 class NetraClient private constructor(
     var baseUrl: String? = null,
@@ -43,6 +43,11 @@ class NetraClient private constructor(
     fun get(path: String): RequestBuilder {
         return RequestBuilder(client, baseUrl!!, path, converter)
     }
+
+    companion object {
+        val globalFailureCount = AtomicInteger(0)
+        var lastFailureTime: Long = 0
+    }
 }
 
 class RequestBuilder(val client: OkHttpClient, val baseUrl: String, val path: String, val converter: IConverter?) {
@@ -67,7 +72,8 @@ class NetraCall<T>(
 ) {
     fun enqueue(callback: (Status?) -> Unit) {
         val reporter = StatusReporter(callback)
-        val request = Request.Builder().tag(StatusReporter::class.java, reporter).url(baseUrl + path).build()
+        val request =
+            Request.Builder().tag(StatusReporter::class.java, reporter).url(baseUrl + path).build()
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -75,13 +81,25 @@ class NetraCall<T>(
             }
 
             override fun onResponse(call: Call, response: Response) {
-                if (converter != null) {
-                    val convertedResult: T = converter.convert(response.body.bytes(), type)
-                    callback(Status.Success(convertedResult))
+                if (response.isSuccessful) {
+                    try {
+                        if (converter != null) {
+                            val convertedResult: T = converter.convert(response.body.bytes(), type)
+                            callback(Status.Success(convertedResult))
+                        } else {
+                            //todo
+//                    val convertedResult: T =
+//                        NetraGsonConverter().convert(response.body.bytes(), type)
+                            callback(Status.Success(response.body))
+                        }
+                    } catch (e: Error) {
+                        callback(Status.Error("Parsing Error: ${e.message}"))
+                    } finally {
+                        response.close()
+                    }
                 } else {
-                    val convertedResult: T =
-                        NetraGsonConverter().convert(response.body.bytes(), type)
-                    callback(Status.Success(convertedResult))
+                    callback(Status.Error("Server Error: ${response.code}"))
+                    response.close()
                 }
             }
         })
