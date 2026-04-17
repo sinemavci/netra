@@ -20,6 +20,18 @@ data class Repo(
     val id: Int,
     val name: String
 )
+
+//val client = NetraClient.Builder()
+//    .baseUrl("https://api.github.com")
+//    .addConverterFactory(
+//        NetraGsonConverter()
+//    ).build()
+//
+//client.get("/users/octocat/repos")
+//.asList<Repo>().enqueue { result ->
+//    print("result: ${result?.get(0)?.name}}")
+//}
+//}
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,14 +48,13 @@ class MainActivity : ComponentActivity() {
                                 Log.e("click", "click")
                                 val client = NetraClient.Builder(applicationContext)
                                     .baseUrl("http://10.0.2.2:3000")
-//                                    .addConverterFactory(
-//                                        NetraGsonConverter()
-//                                    )
+                                    .addConverterFactory(
+                                        NetraGsonConverter()
+                                    )
                                     .build()
 
                                 client.get("/?status=200")
-                                    .asList<Any>()
-//                                    .execute()
+                                    .asList<Repo>()
                                     .enqueue { result ->
                                         Log.e("result", result.toString())
                                         if (result is Status.Success<*>) {

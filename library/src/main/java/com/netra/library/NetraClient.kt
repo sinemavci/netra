@@ -10,6 +10,7 @@ import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.IOException
 import java.io.File
 import java.lang.reflect.Type
@@ -103,7 +104,10 @@ class NetraCall<T>(
                         Log.e("cache failed", "cache is empty")
                         callback(Status.Error(e.message))
                     } else {
-                        Log.e("cache founded", "cache here: ${cacheValue} converter here ${converter}")
+                        Log.e(
+                            "cache founded",
+                            "cache here: ${cacheValue} converter here ${converter}"
+                        )
                         if (converter != null) {
                             val convertedResult: T =
                                 converter.convert(cacheValue, type)
@@ -121,17 +125,25 @@ class NetraCall<T>(
             override fun onResponse(call: Call, response: Response) {
                 if (response.isSuccessful) {
                     try {
+                        val originalBody = response.body
+                        val bytes = originalBody.bytes()
                         val cacheDirectory = _cache?.path ?: context.cacheDir
                         val cacheFile = File("${cacheDirectory}/cacheFile1")
                         cacheFile.createNewFile()
-                        cacheFile.writeBytes(response.body.bytes())
+                        cacheFile.writeBytes(bytes)
                         Log.e(
                             "cached",
                             "cached path: ${cacheFile.path} name: ${cacheFile.name}"
                         )
+
+                        val newBody = bytes.toResponseBody(originalBody.contentType())
+                        val newResponse = response.newBuilder()
+                            .body(newBody)
+                            .build()
+
                         if (converter != null) {
                             val convertedResult: T =
-                                converter.convert(response.body.bytes(), type)
+                                converter.convert(newResponse.body.bytes(), type)
                             callback(Status.Success(convertedResult))
                         } else {
                             //todo
@@ -171,3 +183,7 @@ class NetraCall<T>(
 //   .slowMode() // This sets the header! // here
 //   .asObject<MyData>()
 //   .enqueue { status -> ... }
+
+// todo:
+// DiskLruCache implements
+
