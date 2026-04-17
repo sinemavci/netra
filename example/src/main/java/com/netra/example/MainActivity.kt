@@ -34,14 +34,14 @@ class MainActivity : ComponentActivity() {
                         Button(
                             onClick = {
                                 Log.e("click", "click")
-                                val client = NetraClient.Builder()
+                                val client = NetraClient.Builder(applicationContext)
                                     .baseUrl("http://10.0.2.2:3000")
 //                                    .addConverterFactory(
 //                                        NetraGsonConverter()
 //                                    )
                                     .build()
 
-                                client.get("/?status=502")
+                                client.get("/?status=200")
                                     .asList<Any>()
 //                                    .execute()
                                     .enqueue { result ->
