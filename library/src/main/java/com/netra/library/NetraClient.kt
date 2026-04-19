@@ -16,6 +16,8 @@ import java.io.File
 import java.lang.reflect.Type
 import java.util.concurrent.atomic.AtomicInteger
 
+val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
+val cacheSize = maxMemory / 8
 class NetraClient private constructor(
     val context: Context,
     var baseUrl: String? = null,
@@ -54,14 +56,18 @@ class NetraClient private constructor(
     companion object {
         val globalFailureCount = AtomicInteger(0)
         var lastFailureTime: Long = 0
+
+        val memoryCache = object : LruCache<String, ByteArray>(cacheSize) {
+            override fun sizeOf(key: String, bitmap: ByteArray): Int {
+                return bitmap.size / 1024
+            }
+        }
     }
 }
 
 class RequestBuilder(val context: Context, val client: OkHttpClient, val baseUrl: String, val path: String, val converter: IConverter?) {
     inline fun <reified T> asList(): NetraCall<List<T>> {
         val type = object : TypeToken<List<T>>() {}.type
-        val cache = LruCache<T, Any
-                >(10000).size()
         return NetraCall(context, client, baseUrl, path, type, converter)
     }
 
@@ -82,8 +88,20 @@ class NetraCall<T>(
 ) {
     private var _cache: Cache? = null
 
-    fun withCache(cache: Cache) {
+    fun withCache(cache: Cache): NetraCall<T> {
         _cache = cache
+        return this
+    }
+
+    private fun shouldUseCache(file: File, ttlMillis: Long): Boolean {
+        val lastModified = file.lastModified()
+        val now = System.currentTimeMillis()
+        return (now - lastModified) < ttlMillis
+    }
+
+    private fun getCacheKey(url: String): String {
+        val bytes = java.security.MessageDigest.getInstance("MD5").digest(url.toByteArray())
+        return bytes.joinToString("") { "%02x".format(it) }
     }
 
     fun enqueue(callback: (Status?) -> Unit) {
@@ -94,31 +112,30 @@ class NetraCall<T>(
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                if (_cache != null) {
+                val cacheDirectory = context.cacheDir
+                val cacheFile = File("${cacheDirectory}/${getCacheKey(baseUrl + path)}")
+                val cacheValue = cacheFile.readBytes()
+                if (_cache == null) {
                     callback(Status.Error(e.message))
-                } else {
-                    val cacheDirectory = _cache?.path ?: context.cacheDir
-                    val cacheFile = File("${cacheDirectory}/cacheFile1")
-                    val cacheValue = cacheFile.readBytes()
+                } else if(shouldUseCache(cacheFile, _cache?.ttl ?: 10000)){
+                    //val cacheValue = NetraClient.memoryCache.get(baseUrl + path)
+
                     if (cacheValue.isEmpty()) {
-                        Log.e("cache failed", "cache is empty")
                         callback(Status.Error(e.message))
                     } else {
-                        Log.e(
-                            "cache founded",
-                            "cache here: ${cacheValue} converter here ${converter}"
-                        )
                         if (converter != null) {
                             val convertedResult: T =
                                 converter.convert(cacheValue, type)
-                            callback(Status.Success(convertedResult))
+                            callback(Status.Success(convertedResult, true))
                         } else {
                             //todo
 //                    val convertedResult: T =
 //                        NetraGsonConverter().convert(response.body.bytes(), type)
-                            callback(Status.Success(cacheValue))
+                            callback(Status.Success(cacheValue, true))
                         }
                     }
+                } else {
+                    callback(Status.Error(e.message))
                 }
             }
 
@@ -127,15 +144,13 @@ class NetraCall<T>(
                     try {
                         val originalBody = response.body
                         val bytes = originalBody.bytes()
-                        val cacheDirectory = _cache?.path ?: context.cacheDir
-                        val cacheFile = File("${cacheDirectory}/cacheFile1")
-                        cacheFile.createNewFile()
-                        cacheFile.writeBytes(bytes)
-                        Log.e(
-                            "cached",
-                            "cached path: ${cacheFile.path} name: ${cacheFile.name}"
-                        )
-
+                        _cache?.let {
+                            val cacheDirectory = context.cacheDir
+                            val cacheFile = File("${cacheDirectory}/${getCacheKey(baseUrl + path)}")
+                            cacheFile.createNewFile()
+                            cacheFile.writeBytes(bytes)
+                        }
+                        NetraClient.memoryCache.put(baseUrl + path, bytes)
                         val newBody = bytes.toResponseBody(originalBody.contentType())
                         val newResponse = response.newBuilder()
                             .body(newBody)
@@ -144,12 +159,12 @@ class NetraCall<T>(
                         if (converter != null) {
                             val convertedResult: T =
                                 converter.convert(newResponse.body.bytes(), type)
-                            callback(Status.Success(convertedResult))
+                            callback(Status.Success(convertedResult, false))
                         } else {
                             //todo
 //                    val convertedResult: T =
 //                        NetraGsonConverter().convert(response.body.bytes(), type)
-                            callback(Status.Success(response.body))
+                            callback(Status.Success(response.body, false))
                         }
                     } catch (e: Error) {
                         callback(Status.Error("Parsing Error: ${e.message}"))
@@ -183,7 +198,4 @@ class NetraCall<T>(
 //   .slowMode() // This sets the header! // here
 //   .asObject<MyData>()
 //   .enqueue { status -> ... }
-
-// todo:
-// DiskLruCache implements
 

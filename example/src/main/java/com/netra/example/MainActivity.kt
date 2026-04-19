@@ -12,9 +12,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import com.netra.example.ui.theme.NetraTheme
+import com.netra.library.Cache
 import com.netra.library.NetraClient
 import com.netra.library.Status
 import com.netra.library.converter.NetraGsonConverter
+import java.nio.file.Path
 
 data class Repo(
     val id: Int,
@@ -55,6 +57,7 @@ class MainActivity : ComponentActivity() {
 
                                 client.get("/?status=200")
                                     .asList<Repo>()
+                                    .withCache(Cache(null))
                                     .enqueue { result ->
                                         Log.e("result", result.toString())
                                         if (result is Status.Success<*>) {
