@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
                             onClick = {
                                 Log.e("click", "click")
                                 val client = NetraClient.Builder(applicationContext)
-                                    .baseUrl("http://10.0.2.2:3000")
+                                    .baseUrl("http://10.0.2.2:3001")
                                     .addConverterFactory(
                                         NetraGsonConverter()
                                     )

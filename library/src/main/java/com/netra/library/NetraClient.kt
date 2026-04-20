@@ -96,6 +96,7 @@ class NetraCall<T>(
     private fun shouldUseCache(file: File, ttlMillis: Long): Boolean {
         val lastModified = file.lastModified()
         val now = System.currentTimeMillis()
+        Log.e("shouldUseCache", "${(now - lastModified) < ttlMillis} ${(now - lastModified)}")
         return (now - lastModified) < ttlMillis
     }
 
@@ -114,13 +115,17 @@ class NetraCall<T>(
             override fun onFailure(call: Call, e: IOException) {
                 val cacheDirectory = context.cacheDir
                 val cacheFile = File("${cacheDirectory}/${getCacheKey(baseUrl + path)}")
-                val cacheValue = cacheFile.readBytes()
+                val cacheValue: ByteArray? = if(cacheFile.exists()) {
+                    cacheFile.readBytes()
+                } else {
+                   null
+                }
                 if (_cache == null) {
                     callback(Status.Error(e.message))
-                } else if(shouldUseCache(cacheFile, _cache?.ttl ?: 10000)){
+                } else if(shouldUseCache(cacheFile, _cache?.ttl ?: 600000)){
                     //val cacheValue = NetraClient.memoryCache.get(baseUrl + path)
 
-                    if (cacheValue.isEmpty()) {
+                    if (cacheValue == null || cacheValue.isEmpty()) {
                         callback(Status.Error(e.message))
                     } else {
                         if (converter != null) {
@@ -147,6 +152,10 @@ class NetraCall<T>(
                         _cache?.let {
                             val cacheDirectory = context.cacheDir
                             val cacheFile = File("${cacheDirectory}/${getCacheKey(baseUrl + path)}")
+                            Log.e("cache file", "cache file re-created: ${cacheFile.name}")
+                            if (cacheFile.exists()) {
+                                cacheFile.delete()
+                            }
                             cacheFile.createNewFile()
                             cacheFile.writeBytes(bytes)
                         }
