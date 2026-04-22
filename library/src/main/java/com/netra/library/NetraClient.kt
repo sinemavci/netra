@@ -9,6 +9,7 @@ import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.IOException
@@ -49,8 +50,12 @@ class NetraClient private constructor(
         }
     }
 
+    fun post(path: String, requestBody: RequestBody): RequestBuilder {
+        return RequestBuilder(context, Command.Post(baseUrl + path, requestBody), client, converter)
+    }
+
     fun get(path: String): RequestBuilder {
-        return RequestBuilder(context, client, baseUrl!!, path, converter)
+        return RequestBuilder(context, Command.Get(baseUrl + path), client, converter)
     }
 
     companion object {
@@ -65,14 +70,14 @@ class NetraClient private constructor(
     }
 }
 
-class RequestBuilder(val context: Context, val client: OkHttpClient, val baseUrl: String, val path: String, val converter: IConverter?) {
+class RequestBuilder(val context: Context, val command: Command, val client: OkHttpClient, val converter: IConverter?) {
     inline fun <reified T> asList(): NetraCall<List<T>> {
         val type = object : TypeToken<List<T>>() {}.type
-        return NetraCall(context, client, baseUrl, path, type, converter)
+        return NetraCall(context, client, command, type, converter)
     }
 
     inline fun <reified T> asObject(): NetraCall<T> {
-        return NetraCall(context, client, baseUrl, path, T::class.java, converter)
+        return NetraCall(context, client, command, T::class.java, converter)
     }
 }
 
@@ -81,8 +86,7 @@ class StatusReporter(val onStatusUpdate: (Status) -> Unit)
 class NetraCall<T>(
     val context: Context,
     val client: OkHttpClient,
-    val baseUrl: String,
-    val path: String,
+    val command: Command,
     val type: Type,
     val converter: IConverter?,
 ) {
@@ -107,14 +111,30 @@ class NetraCall<T>(
 
     fun enqueue(callback: (Status?) -> Unit) {
         val reporter = StatusReporter(callback)
-        val request =
-            Request.Builder().tag(StatusReporter::class.java, reporter).url(baseUrl + path)
+        val request = when(command) {
+            is Command.Delete -> Request.Builder().tag(StatusReporter::class.java, reporter)
+                .url(command.url)
+                .delete(command.body)
                 .build()
+
+            is Command.Get -> Request.Builder().tag(StatusReporter::class.java, reporter)
+                .url(command.url)
+                .build()
+
+            is Command.Post -> Request.Builder().tag(StatusReporter::class.java, reporter)
+                .url(command.url)
+                .post(command.body)
+                .build()
+
+            is Command.Update -> Request.Builder().tag(StatusReporter::class.java, reporter)
+                .url(command.url)
+                .build()
+        }
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 val cacheDirectory = context.cacheDir
-                val cacheFile = File("${cacheDirectory}/${getCacheKey(baseUrl + path)}")
+                val cacheFile = File("${cacheDirectory}/${getCacheKey(command.url)}")
                 val cacheValue: ByteArray? = if(cacheFile.exists()) {
                     cacheFile.readBytes()
                 } else {
@@ -151,7 +171,7 @@ class NetraCall<T>(
                         val bytes = originalBody.bytes()
                         _cache?.let {
                             val cacheDirectory = context.cacheDir
-                            val cacheFile = File("${cacheDirectory}/${getCacheKey(baseUrl + path)}")
+                            val cacheFile = File("${cacheDirectory}/${getCacheKey(command.url)}")
                             Log.e("cache file", "cache file re-created: ${cacheFile.name}")
                             if (cacheFile.exists()) {
                                 cacheFile.delete()
@@ -159,7 +179,7 @@ class NetraCall<T>(
                             cacheFile.createNewFile()
                             cacheFile.writeBytes(bytes)
                         }
-                        NetraClient.memoryCache.put(baseUrl + path, bytes)
+                        NetraClient.memoryCache.put(command.url, bytes)
                         val newBody = bytes.toResponseBody(originalBody.contentType())
                         val newResponse = response.newBuilder()
                             .body(newBody)
@@ -207,4 +227,8 @@ class NetraCall<T>(
 //   .slowMode() // This sets the header! // here
 //   .asObject<MyData>()
 //   .enqueue { status -> ... }
+
+
+// todo: post and image load/upload example trying in chaos-server
+//
 

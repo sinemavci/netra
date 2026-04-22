@@ -16,7 +16,8 @@ import com.netra.library.Cache
 import com.netra.library.NetraClient
 import com.netra.library.Status
 import com.netra.library.converter.NetraGsonConverter
-import java.nio.file.Path
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 data class Repo(
     val id: Int,
@@ -49,14 +50,25 @@ class MainActivity : ComponentActivity() {
                             onClick = {
                                 Log.e("click", "click")
                                 val client = NetraClient.Builder(applicationContext)
-                                    .baseUrl("http://10.0.2.2:3001")
+                                    //.baseUrl("http://10.0.2.2:3001")
+                                    .baseUrl("https://jsonplaceholder.typicode.com")
                                     .addConverterFactory(
                                         NetraGsonConverter()
                                     )
                                     .build()
 
-                                client.get("/?status=200")
-                                    .asList<Repo>()
+                                val json = """
+                                    {
+                                    "name": "Sinem",
+                                    "job": "developer"
+                                    }
+                                    """.trimIndent()
+
+                                val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
+
+                                //client.get("/?status=200")
+                                    client.post("/posts", body)
+                                    .asObject<Any>()
                                     .withCache(Cache(null))
                                     .enqueue { result ->
                                         Log.e("result", result.toString())
