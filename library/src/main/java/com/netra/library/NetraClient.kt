@@ -50,12 +50,24 @@ class NetraClient private constructor(
         }
     }
 
+    fun get(path: String): RequestBuilder {
+        return RequestBuilder(context, Command.Get(baseUrl + path), client, converter)
+    }
+
     fun post(path: String, requestBody: RequestBody): RequestBuilder {
         return RequestBuilder(context, Command.Post(baseUrl + path, requestBody), client, converter)
     }
 
-    fun get(path: String): RequestBuilder {
-        return RequestBuilder(context, Command.Get(baseUrl + path), client, converter)
+    fun put(path: String, requestBody: RequestBody): RequestBuilder {
+        return RequestBuilder(context, Command.Put(baseUrl + path, requestBody), client, converter)
+    }
+
+    fun patch(path: String, requestBody: RequestBody): RequestBuilder {
+        return RequestBuilder(context, Command.Patch(baseUrl + path, requestBody), client, converter)
+    }
+
+    fun delete(path: String, requestBody: RequestBody?): RequestBuilder {
+        return RequestBuilder(context, Command.Delete(baseUrl + path, requestBody), client, converter)
     }
 
     companion object {
@@ -104,21 +116,17 @@ class NetraCall<T>(
         return (now - lastModified) < ttlMillis
     }
 
-    private fun getCacheKey(url: String): String {
-        val bytes = java.security.MessageDigest.getInstance("MD5").digest(url.toByteArray())
+    private fun getCacheKey(command: Command): String {
+        val bytes = java.security.MessageDigest.getInstance("MD5").digest(command.url.toByteArray() + command.toString().toByteArray())
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
     fun enqueue(callback: (Status?) -> Unit) {
         val reporter = StatusReporter(callback)
         val request = when(command) {
-            is Command.Delete -> Request.Builder().tag(StatusReporter::class.java, reporter)
-                .url(command.url)
-                .delete(command.body)
-                .build()
-
             is Command.Get -> Request.Builder().tag(StatusReporter::class.java, reporter)
                 .url(command.url)
+                .get()
                 .build()
 
             is Command.Post -> Request.Builder().tag(StatusReporter::class.java, reporter)
@@ -126,15 +134,26 @@ class NetraCall<T>(
                 .post(command.body)
                 .build()
 
-            is Command.Update -> Request.Builder().tag(StatusReporter::class.java, reporter)
+            is Command.Put -> Request.Builder().tag(StatusReporter::class.java, reporter)
                 .url(command.url)
+                .put(command.body)
+                .build()
+
+            is Command.Patch -> Request.Builder().tag(StatusReporter::class.java, reporter)
+                .url(command.url)
+                .patch(command.body)
+                .build()
+
+            is Command.Delete -> Request.Builder().tag(StatusReporter::class.java, reporter)
+                .url(command.url)
+                .delete(command.body)
                 .build()
         }
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 val cacheDirectory = context.cacheDir
-                val cacheFile = File("${cacheDirectory}/${getCacheKey(command.url)}")
+                val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
                 val cacheValue: ByteArray? = if(cacheFile.exists()) {
                     cacheFile.readBytes()
                 } else {
@@ -171,7 +190,7 @@ class NetraCall<T>(
                         val bytes = originalBody.bytes()
                         _cache?.let {
                             val cacheDirectory = context.cacheDir
-                            val cacheFile = File("${cacheDirectory}/${getCacheKey(command.url)}")
+                            val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
                             Log.e("cache file", "cache file re-created: ${cacheFile.name}")
                             if (cacheFile.exists()) {
                                 cacheFile.delete()

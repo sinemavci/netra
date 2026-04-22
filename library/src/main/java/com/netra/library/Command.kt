@@ -7,7 +7,9 @@ sealed class Command(val url: String) {
 
     data class Post(val u: String, val body: RequestBody) : Command(u)
 
-    data class Delete(val u: String, val body: RequestBody?) : Command(u)
+    data class Put(val u: String, val body: RequestBody) : Command(u)
 
-    data class Update(val u: String, val body: RequestBody) : Command(u)
+    data class Patch(val u: String, val body: RequestBody) : Command(u)
+
+    data class Delete(val u: String, val body: RequestBody?) : Command(u)
 }

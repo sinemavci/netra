@@ -36,6 +36,133 @@ data class Repo(
 //}
 //}
 class MainActivity : ComponentActivity() {
+    fun handleGet() {
+        val client = NetraClient.Builder(applicationContext)
+            //.baseUrl("http://10.0.2.2:3001")
+            .baseUrl("https://jsonplaceholder.typicode.com")
+            .addConverterFactory(
+                NetraGsonConverter()
+            )
+            .build()
+        val json = """
+                                    {
+                                    "name": "Sinem",
+                                    "job": "developer"
+                                    }
+                                    """.trimIndent()
+        val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
+        //client.get("/?status=200")
+        client.get("/users")
+            .asObject<Any>()
+            .withCache(Cache(null))
+            .enqueue { result ->
+                Log.e("result", result.toString())
+                if (result is Status.Success<*>) {
+                    Log.e("result is success", result.response.toString())
+                }
+            }
+    }
+
+    fun handlePost() {
+        val client = NetraClient.Builder(applicationContext)
+            //.baseUrl("http://10.0.2.2:3001")
+            .baseUrl("https://jsonplaceholder.typicode.com")
+            .addConverterFactory(
+                NetraGsonConverter()
+            )
+            .build()
+        val json = """
+                                    {
+                                    "name": "Sinem",
+                                    "job": "developer"
+                                    }
+                                    """.trimIndent()
+        val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
+        //client.get("/?status=200")
+        client.post("/users", body)
+            .asObject<Any>()
+            .withCache(Cache(null))
+            .enqueue { result ->
+                Log.e("result", result.toString())
+                if (result is Status.Success<*>) {
+                    Log.e("result is success", result.response.toString())
+                }
+            }
+    }
+
+    fun handlePut() {
+        val client = NetraClient.Builder(applicationContext)
+            //.baseUrl("http://10.0.2.2:3001")
+            .baseUrl("https://jsonplaceholder.typicode.com")
+            .addConverterFactory(
+                NetraGsonConverter()
+            )
+            .build()
+        val json = """
+                                    {
+                                    "name": "Sinem",
+                                    "job": "not developer"
+                                    }
+                                    """.trimIndent()
+        val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
+        //client.get("/?status=200")
+        client.put("/users/1", body)
+            .asObject<Any>()
+            .withCache(Cache(null))
+            .enqueue { result ->
+                Log.e("result", result.toString())
+                if (result is Status.Success<*>) {
+                    Log.e("result is success", result.response.toString())
+                }
+            }
+    }
+
+    fun handlePatch() {
+        val client = NetraClient.Builder(applicationContext)
+            //.baseUrl("http://10.0.2.2:3001")
+            .baseUrl("https://jsonplaceholder.typicode.com")
+            .addConverterFactory(
+                NetraGsonConverter()
+            )
+            .build()
+        val json = """
+                                    {
+                                    "name": "Selin",
+                                    }
+                                    """.trimIndent()
+        val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
+        //client.get("/?status=200")
+        client.patch("/users/1", body)
+            .asObject<Any>()
+            .withCache(Cache(null))
+            .enqueue { result ->
+                Log.e("result", result.toString())
+                if (result is Status.Success<*>) {
+                    Log.e("result is success", result.response.toString())
+                }
+            }
+    }
+
+    fun handleDelete() {
+        val client = NetraClient.Builder(applicationContext)
+            //.baseUrl("http://10.0.2.2:3001")
+            .baseUrl("https://jsonplaceholder.typicode.com")
+            .addConverterFactory(
+                NetraGsonConverter()
+            )
+            .build()
+        //client.get("/?status=200")
+        client.delete("/users/1", null)
+            .asObject<Any>()
+            .withCache(Cache(null))
+            .enqueue { result ->
+                Log.e("result", result.toString())
+                if (result is Status.Success<*>) {
+                    Log.e("result is success", result.response.toString())
+                }
+            }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -48,38 +175,47 @@ class MainActivity : ComponentActivity() {
                         )
                         Button(
                             onClick = {
-                                Log.e("click", "click")
-                                val client = NetraClient.Builder(applicationContext)
-                                    //.baseUrl("http://10.0.2.2:3001")
-                                    .baseUrl("https://jsonplaceholder.typicode.com")
-                                    .addConverterFactory(
-                                        NetraGsonConverter()
-                                    )
-                                    .build()
-
-                                val json = """
-                                    {
-                                    "name": "Sinem",
-                                    "job": "developer"
-                                    }
-                                    """.trimIndent()
-
-                                val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
-
-                                //client.get("/?status=200")
-                                    client.post("/posts", body)
-                                    .asObject<Any>()
-                                    .withCache(Cache(null))
-                                    .enqueue { result ->
-                                        Log.e("result", result.toString())
-                                        if (result is Status.Success<*>) {
-                                            Log.e("result is success", result.response.toString())
-                                        }
-                                    }
+                                handleGet()
                             }
                         ) {
                             Text(
-                                text = "press",
+                                text = "get",
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                handlePost()
+                            }
+                        ) {
+                            Text(
+                                text = "post",
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                handlePut()
+                            }
+                        ) {
+                            Text(
+                                text = "put",
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                handlePatch()
+                            }
+                        ) {
+                            Text(
+                                text = "patch",
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                handleDelete()
+                            }
+                        ) {
+                            Text(
+                                text = "delete",
                             )
                         }
                     }
