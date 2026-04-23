@@ -38,8 +38,8 @@ data class Repo(
 class MainActivity : ComponentActivity() {
     fun handleGet() {
         val client = NetraClient.Builder(applicationContext)
-            //.baseUrl("http://10.0.2.2:3001")
-            .baseUrl("https://jsonplaceholder.typicode.com")
+            .baseUrl("http://10.0.2.2:3001")
+//            .baseUrl("https://jsonplaceholder.typicode.com")
             .addConverterFactory(
                 NetraGsonConverter()
             )
@@ -51,8 +51,8 @@ class MainActivity : ComponentActivity() {
                                     }
                                     """.trimIndent()
         val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
-        //client.get("/?status=200")
-        client.get("/users")
+        client.get("/?status=404")
+       // client.get("/users")
             .slowMode()
             .addHeader("headercustom", "custom")
             .asObject<Any>()
@@ -62,8 +62,10 @@ class MainActivity : ComponentActivity() {
                     Log.e("result is success", result.response.toString())
                 } else if (result is Status.Retrying) {
                     Log.e("result is Retrying", result.code.toString())
+                } else if (result is Status.Error) {
+                    Log.e("result is Error", result.code.toString())
                 } else {
-                    Log.e("result is Error", (result as Status.Error).message.toString())
+                    Log.e("result is Failure", (result as Status.Failure).message.toString())
                 }
             }
     }
@@ -145,8 +147,10 @@ class MainActivity : ComponentActivity() {
                     Log.e("result is success", result.response.toString())
                 } else if (result is Status.Retrying) {
                     Log.e("result is Retrying", result.code.toString())
-                } else {
-                    Log.e("result is Error", (result as Status.Error).message.toString())
+                } else if (result is Status.Error) {
+                    Log.e("result is Error", result.code.toString())
+                }else {
+                    Log.e("result is Failure", (result as Status.Failure).message.toString())
                 }
             }
     }

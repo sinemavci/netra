@@ -137,7 +137,7 @@ class NetraCall<T>(
 
     fun enqueue(callback: (Status?) -> Unit) {
         val reporter = StatusReporter(callback)
-        val request = when(command) {
+        val request = when (command) {
             is Command.Get -> {
                 val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
                     .url(command.url).get()
@@ -197,18 +197,18 @@ class NetraCall<T>(
             override fun onFailure(call: Call, e: IOException) {
                 val cacheDirectory = context.cacheDir
                 val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
-                val cacheValue: ByteArray? = if(cacheFile.exists()) {
+                val cacheValue: ByteArray? = if (cacheFile.exists()) {
                     cacheFile.readBytes()
                 } else {
-                   null
+                    null
                 }
                 if (_cache == null) {
-                    callback(Status.Error(e.message))
-                } else if(shouldUseCache(cacheFile, _cache?.ttl ?: 600000)){
+                    callback(Status.Failure(e.message))
+                } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
                     //val cacheValue = NetraClient.memoryCache.get(baseUrl + path)
 
                     if (cacheValue == null || cacheValue.isEmpty()) {
-                        callback(Status.Error(e.message))
+                        callback(Status.Failure(e.message))
                     } else {
                         if (converter != null) {
                             val convertedResult: T =
@@ -222,7 +222,7 @@ class NetraCall<T>(
                         }
                     }
                 } else {
-                    callback(Status.Error(e.message))
+                    callback(Status.Failure(e.message))
                 }
             }
 
@@ -258,12 +258,12 @@ class NetraCall<T>(
                             callback(Status.Success(response.body, false))
                         }
                     } catch (e: Error) {
-                        callback(Status.Error("Parsing Error: ${e.message}"))
+                        callback(Status.Error(response.code, "Parsing Error: ${e.message}"))
                     } finally {
                         response.close()
                     }
                 } else {
-                    callback(Status.Error("Server Error: ${response.code}"))
+                    callback(Status.Error(response.code, "Server Error: ${response.code}"))
                     response.close()
                 }
             }
