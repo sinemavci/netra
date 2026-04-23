@@ -58,9 +58,12 @@ class MainActivity : ComponentActivity() {
             .asObject<Any>()
             .withCache(Cache(null))
             .enqueue { result ->
-                Log.e("result", result.toString())
                 if (result is Status.Success<*>) {
                     Log.e("result is success", result.response.toString())
+                } else if (result is Status.Retrying) {
+                    Log.e("result is Retrying", result.code.toString())
+                } else {
+                    Log.e("result is Error", (result as Status.Error).message.toString())
                 }
             }
     }
@@ -138,9 +141,12 @@ class MainActivity : ComponentActivity() {
             .asObject<Any>()
             .withCache(Cache(null))
             .enqueue { result ->
-                Log.e("result", result.toString())
                 if (result is Status.Success<*>) {
                     Log.e("result is success", result.response.toString())
+                } else if (result is Status.Retrying) {
+                    Log.e("result is Retrying", result.code.toString())
+                } else {
+                    Log.e("result is Error", (result as Status.Error).message.toString())
                 }
             }
     }

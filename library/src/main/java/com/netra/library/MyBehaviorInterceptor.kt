@@ -45,7 +45,7 @@ class MyBehaviorInterceptor : Interceptor {
             response.close()
 
             attempt++
-            reporter?.onStatusUpdate(Status.Retrying(attempt))
+            reporter?.onStatusUpdate(Status.Retrying(response.code, attempt))
 
             Thread.sleep(1000 * attempt.toLong())
             response = currentChain.proceed(request)
