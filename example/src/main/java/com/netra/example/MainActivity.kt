@@ -53,6 +53,8 @@ class MainActivity : ComponentActivity() {
         val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
         //client.get("/?status=200")
         client.get("/users")
+            .slowMode()
+            .addHeader("headercustom", "custom")
             .asObject<Any>()
             .withCache(Cache(null))
             .enqueue { result ->

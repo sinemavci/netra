@@ -7,11 +7,13 @@ import com.google.gson.reflect.TypeToken
 import com.netra.library.converter.IConverter
 import okhttp3.Call
 import okhttp3.Callback
+import okhttp3.Headers
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
+import okhttp3.internal.http2.Header
 import okio.IOException
 import java.io.File
 import java.lang.reflect.Type
@@ -83,13 +85,24 @@ class NetraClient private constructor(
 }
 
 class RequestBuilder(val context: Context, val command: Command, val client: OkHttpClient, val converter: IConverter?) {
+    val headers = mutableMapOf<String, String>()
+
+    fun addHeader(key: String, value: String): RequestBuilder {
+        headers[key] = value
+        return this
+    }
+
+    fun slowMode(): RequestBuilder {
+        return addHeader("X-Priority", "Slow")
+    }
+
     inline fun <reified T> asList(): NetraCall<List<T>> {
         val type = object : TypeToken<List<T>>() {}.type
-        return NetraCall(context, client, command, type, converter)
+        return NetraCall(context, client, command, type, converter, headers)
     }
 
     inline fun <reified T> asObject(): NetraCall<T> {
-        return NetraCall(context, client, command, T::class.java, converter)
+        return NetraCall(context, client, command, T::class.java, converter, headers)
     }
 }
 
@@ -101,6 +114,7 @@ class NetraCall<T>(
     val command: Command,
     val type: Type,
     val converter: IConverter?,
+    val header: Map<String, String>?,
 ) {
     private var _cache: Cache? = null
 
@@ -124,30 +138,59 @@ class NetraCall<T>(
     fun enqueue(callback: (Status?) -> Unit) {
         val reporter = StatusReporter(callback)
         val request = when(command) {
-            is Command.Get -> Request.Builder().tag(StatusReporter::class.java, reporter)
-                .url(command.url)
-                .get()
-                .build()
+            is Command.Get -> {
+                val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
+                    .url(command.url).get()
 
-            is Command.Post -> Request.Builder().tag(StatusReporter::class.java, reporter)
-                .url(command.url)
-                .post(command.body)
-                .build()
+                header?.forEach { (key, value) ->
+                    requestBuilder.addHeader(key, value)
+                }
+                requestBuilder.build()
+            }
 
-            is Command.Put -> Request.Builder().tag(StatusReporter::class.java, reporter)
-                .url(command.url)
-                .put(command.body)
-                .build()
+            is Command.Post -> {
+                val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
+                    .url(command.url)
+                    .post(command.body)
 
-            is Command.Patch -> Request.Builder().tag(StatusReporter::class.java, reporter)
-                .url(command.url)
-                .patch(command.body)
-                .build()
+                header?.forEach { (key, value) ->
+                    requestBuilder.addHeader(key, value)
+                }
+                requestBuilder.build()
+            }
 
-            is Command.Delete -> Request.Builder().tag(StatusReporter::class.java, reporter)
-                .url(command.url)
-                .delete(command.body)
-                .build()
+            is Command.Put -> {
+                val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
+                    .url(command.url)
+                    .put(command.body)
+
+                header?.forEach { (key, value) ->
+                    requestBuilder.addHeader(key, value)
+                }
+                requestBuilder.build()
+            }
+
+            is Command.Patch -> {
+                val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
+                    .url(command.url)
+                    .patch(command.body)
+
+                header?.forEach { (key, value) ->
+                    requestBuilder.addHeader(key, value)
+                }
+                requestBuilder.build()
+            }
+
+            is Command.Delete -> {
+                val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
+                    .url(command.url)
+                    .delete(command.body)
+
+                header?.forEach { (key, value) ->
+                    requestBuilder.addHeader(key, value)
+                }
+                requestBuilder.build()
+            }
         }
 
         client.newCall(request).enqueue(object : Callback {
@@ -239,13 +282,6 @@ class NetraCall<T>(
 //        }
 //    }
 }
-
-//todo:
-// what are difference retrofit builder vs netra builder?
-//  netraClient.get("/large-data")
-//   .slowMode() // This sets the header! // here
-//   .asObject<MyData>()
-//   .enqueue { status -> ... }
 
 
 // todo: post and image load/upload example trying in chaos-serverrr
