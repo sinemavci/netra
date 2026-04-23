@@ -154,7 +154,7 @@ class MainActivity : ComponentActivity() {
             )
             .build()
         //client.get("/?status=200")
-        client.delete("/users/1", null)
+        client.delete("/users/1")
             .asObject<Any>()
             .withCache(Cache(null))
             .enqueue { result ->

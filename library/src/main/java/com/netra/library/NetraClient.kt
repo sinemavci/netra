@@ -68,7 +68,7 @@ class NetraClient private constructor(
         return RequestBuilder(context, Command.Patch(baseUrl + path, requestBody), client, converter)
     }
 
-    fun delete(path: String, requestBody: RequestBody?): RequestBuilder {
+    fun delete(path: String, requestBody: RequestBody? = RequestBody.EMPTY): RequestBuilder {
         return RequestBuilder(context, Command.Delete(baseUrl + path, requestBody), client, converter)
     }
 
