@@ -5,19 +5,13 @@ import android.util.Log
 import androidx.collection.LruCache
 import com.google.gson.reflect.TypeToken
 import com.netra.library.converter.IConverter
-import com.netra.library.converter.NetraGsonConverter
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.Headers
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
-import okhttp3.internal.http2.Header
 import okio.IOException
 import java.io.File
 import java.lang.reflect.Type
@@ -30,7 +24,7 @@ class NetraClient private constructor(
     var baseUrl: String? = null,
     var converter: IConverter? = null,
 ) {
-    val client = OkHttpClient().newBuilder().addInterceptor(MyBehaviorInterceptor()).build()
+    val client = OkHttpClient().newBuilder().addInterceptor(NetraInterceptor()).build()
 
     data class Builder(
         val context: Context,

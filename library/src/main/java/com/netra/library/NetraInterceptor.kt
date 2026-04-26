@@ -5,7 +5,7 @@ import okhttp3.*
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-class MyBehaviorInterceptor : Interceptor {
+class NetraInterceptor : Interceptor {
     private val maxRetries = 5
 
     private fun shouldRetry(response: Response): Boolean {
