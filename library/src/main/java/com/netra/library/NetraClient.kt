@@ -64,10 +64,6 @@ class NetraClient private constructor(
         return RequestBuilder(context, Command.Post(baseUrl + path, requestBody), client, converter)
     }
 
-    fun postImage(path: String, requestBody: ByteArray, fileName: String): RequestBuilder {
-        return RequestBuilder(context, Command.PostImage(baseUrl + path, requestBody, fileName), client, converter)
-    }
-
     fun put(path: String, requestBody: RequestBody): RequestBuilder {
         return RequestBuilder(context, Command.Put(baseUrl + path, requestBody), client, converter)
     }
@@ -198,19 +194,6 @@ class NetraCall<T>(
                     requestBuilder.addHeader(key, value)
                 }
                 requestBuilder.build()
-            }
-
-            is Command.PostImage -> {
-                val requestBody = MultipartBody.Builder()
-                    .setType(MultipartBody.FORM)
-                    .addFormDataPart(
-                        "image",
-                        command.fileName,
-                        command.imageBytes.toRequestBody("image/jpeg".toMediaType())
-                    )
-                    .build()
-
-                Request.Builder().url(command.url).post(requestBody).build()
             }
         }
 

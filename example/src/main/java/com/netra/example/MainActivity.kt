@@ -26,6 +26,7 @@ import com.netra.library.NetraClient
 import com.netra.library.Status
 import com.netra.library.converter.NetraGsonConverter
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import kotlin.reflect.typeOf
 
@@ -47,6 +48,37 @@ data class Repo(
 //}
 class MainActivity : ComponentActivity() {
     var _bitmap = mutableStateOf<Bitmap?>(null)
+
+    val pickImage = registerForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        uri?.let {
+            val byteArray = uriToByteArray(it)
+            if(byteArray != null) {
+                val requestBody = MultipartBody.Builder()
+                    .setType(MultipartBody.FORM)
+                    .addFormDataPart(
+                        "image",
+                        "exampleImage",
+                        byteArray.toRequestBody("image/jpeg".toMediaType())
+                    )
+                    .build()
+
+                val client = NetraClient.Builder(applicationContext)
+                    .baseUrl("http://10.0.2.2:3001")
+                    .build()
+                client.post("/upload", requestBody)
+                    .asObject<Any>()
+                    .withCache(Cache(null))
+                    .enqueue { result ->
+                        Log.e("result", result.toString())
+                        if (result is Status.Success<*>) {
+                            Log.e("result is success", result.response.toString())
+                        }
+                    }
+            }
+        }
+    }
     fun handleGetImage() {
         val client = NetraClient.Builder(applicationContext)
             .baseUrl("http://10.0.2.2:3001")
@@ -69,29 +101,6 @@ class MainActivity : ComponentActivity() {
     }
 
     fun handlePostImage() {
-        // Simpler alternative — lets user pick from gallery
-        val pickImage = registerForActivityResult(
-            ActivityResultContracts.PickVisualMedia()
-        ) { uri: Uri? ->
-            uri?.let {
-//                val byteArray = uriToByteArray(it)
-//
-//                val client = NetraClient.Builder(applicationContext)
-//                    .baseUrl("http://10.0.2.2:3001")
-//                    .build()
-//                //val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
-//                client.postImage("/upload", byteArray, it.)
-//                    .asObject<Any>()
-//                    .withCache(Cache(null))
-//                    .enqueue { result ->
-//                        Log.e("result", result.toString())
-//                        if (result is Status.Success<*>) {
-//                            Log.e("result is success", result.response.toString())
-//                        }
-//                    }
-            }
-        }
-
         pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
 
@@ -310,7 +319,7 @@ class MainActivity : ComponentActivity() {
                         }
                         Button(
                             onClick = {
-                                //  handlePostImage ()
+                                  handlePostImage ()
                             }
                         ) {
                             Text(
