@@ -1,16 +1,25 @@
 package com.netra.example
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.Image
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import com.netra.example.ui.theme.NetraTheme
 import com.netra.library.Cache
 import com.netra.library.NetraClient
@@ -18,6 +27,7 @@ import com.netra.library.Status
 import com.netra.library.converter.NetraGsonConverter
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
+import kotlin.reflect.typeOf
 
 data class Repo(
     val id: Int,
@@ -36,6 +46,65 @@ data class Repo(
 //}
 //}
 class MainActivity : ComponentActivity() {
+    var _bitmap = mutableStateOf<Bitmap?>(null)
+    fun handleGetImage() {
+        val client = NetraClient.Builder(applicationContext)
+            .baseUrl("http://10.0.2.2:3001")
+            .build()
+        client.get("/image")
+            .asObject<ByteArray>()
+            .withCache(Cache(null))
+            .enqueue { result ->
+                if (result is Status.Success<*>) {
+                    Log.e("here", "here: ${result.response?.javaClass}")
+                    _bitmap.value = BitmapFactory.decodeByteArray(result.response as ByteArray, 0, (result.response as ByteArray).size)
+                } else if (result is Status.Retrying) {
+                    Log.e("result is Retrying", result.code.toString())
+                } else if (result is Status.Error) {
+                    Log.e("result is Error", result.code.toString())
+                } else {
+                    Log.e("result is Failure", (result as Status.Failure).message.toString())
+                }
+            }
+    }
+
+    fun handlePostImage() {
+        // Simpler alternative — lets user pick from gallery
+        val pickImage = registerForActivityResult(
+            ActivityResultContracts.PickVisualMedia()
+        ) { uri: Uri? ->
+            uri?.let {
+//                val byteArray = uriToByteArray(it)
+//
+//                val client = NetraClient.Builder(applicationContext)
+//                    .baseUrl("http://10.0.2.2:3001")
+//                    .build()
+//                //val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
+//                client.postImage("/upload", byteArray, it.)
+//                    .asObject<Any>()
+//                    .withCache(Cache(null))
+//                    .enqueue { result ->
+//                        Log.e("result", result.toString())
+//                        if (result is Status.Success<*>) {
+//                            Log.e("result is success", result.response.toString())
+//                        }
+//                    }
+            }
+        }
+
+        pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+    }
+
+    fun uriToByteArray(uri: Uri): ByteArray? {
+        return try {
+            contentResolver.openInputStream(uri)?.use { inputStream ->
+                inputStream.readBytes()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
     fun handleGet() {
         val client = NetraClient.Builder(applicationContext)
             .baseUrl("http://10.0.2.2:3001")
@@ -228,6 +297,31 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Text(
                                 text = "delete",
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                handleGetImage()
+                            }
+                        ) {
+                            Text(
+                                text = "get image",
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                //  handlePostImage ()
+                            }
+                        ) {
+                            Text(
+                                text = "get image",
+                            )
+                        }
+
+                        if (_bitmap.value !== null) {
+                            androidx.compose.foundation.Image(
+                                bitmap = (_bitmap.value as Bitmap).asImageBitmap(),
+                                contentDescription = "My Bitmap Image"
                             )
                         }
                     }

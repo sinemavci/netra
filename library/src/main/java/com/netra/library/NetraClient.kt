@@ -5,12 +5,16 @@ import android.util.Log
 import androidx.collection.LruCache
 import com.google.gson.reflect.TypeToken
 import com.netra.library.converter.IConverter
+import com.netra.library.converter.NetraGsonConverter
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Headers
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.internal.http2.Header
@@ -58,6 +62,10 @@ class NetraClient private constructor(
 
     fun post(path: String, requestBody: RequestBody): RequestBuilder {
         return RequestBuilder(context, Command.Post(baseUrl + path, requestBody), client, converter)
+    }
+
+    fun postImage(path: String, requestBody: ByteArray, fileName: String): RequestBuilder {
+        return RequestBuilder(context, Command.PostImage(baseUrl + path, requestBody, fileName), client, converter)
     }
 
     fun put(path: String, requestBody: RequestBody): RequestBuilder {
@@ -191,6 +199,19 @@ class NetraCall<T>(
                 }
                 requestBuilder.build()
             }
+
+            is Command.PostImage -> {
+                val requestBody = MultipartBody.Builder()
+                    .setType(MultipartBody.FORM)
+                    .addFormDataPart(
+                        "image",
+                        command.fileName,
+                        command.imageBytes.toRequestBody("image/jpeg".toMediaType())
+                    )
+                    .build()
+
+                Request.Builder().url(command.url).post(requestBody).build()
+            }
         }
 
         client.newCall(request).enqueue(object : Callback {
@@ -252,10 +273,15 @@ class NetraCall<T>(
                                 converter.convert(newResponse.body.bytes(), type)
                             callback(Status.Success(convertedResult, false))
                         } else {
-                            //todo
-//                    val convertedResult: T =
-//                        NetraGsonConverter().convert(response.body.bytes(), type)
-                            callback(Status.Success(response.body, false))
+                            if (type == ByteArray::class.java) {
+                                @Suppress("UNCHECKED_CAST")
+                                callback(Status.Success(bytes as T, false))
+                            } else {
+                                // Fallback for default JSON parsing
+
+                                //callback(Status.Success( NetraGsonConverter().convert(bytes, type), false))
+                            }
+
                         }
                     } catch (e: Error) {
                         callback(Status.Error(response.code, "Parsing Error: ${e.message}"))
