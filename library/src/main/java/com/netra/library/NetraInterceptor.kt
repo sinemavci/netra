@@ -20,7 +20,7 @@ class NetraInterceptor : Interceptor {
 
         Log.e("NetraClient.globalFailureCount:", "NetraClient.globalFailureCount.get(): ${NetraClient.globalFailureCount.get()}")
 
-        if (NetraClient.globalFailureCount.get() >= 5) {
+        if (NetraClient.globalFailureCount.get() >= maxRetries) {
             val timeSinceLastFailure = System.currentTimeMillis() - NetraClient.lastFailureTime
             if (timeSinceLastFailure < 30000) {
                 throw IOException("Circuit is OPEN: Server is unstable. Try again later.")

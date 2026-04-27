@@ -1,7 +1,12 @@
 package com.netra.library
 
+import android.Manifest
+import android.R
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.util.Log
+import androidx.annotation.RequiresPermission
 import androidx.collection.LruCache
 import com.google.gson.reflect.TypeToken
 import com.netra.library.converter.IConverter
@@ -24,7 +29,7 @@ class NetraClient private constructor(
     var baseUrl: String? = null,
     var converter: IConverter? = null,
 ) {
-    val client = OkHttpClient().newBuilder().addInterceptor(NetraInterceptor()).build()
+    private val client = OkHttpClient().newBuilder().addInterceptor(NetraInterceptor()).build()
 
     data class Builder(
         val context: Context,
@@ -42,6 +47,8 @@ class NetraClient private constructor(
         }
 
         fun build(): NetraClient {
+            initCompanion(context)
+
             if (baseUrl != null) {
                 return NetraClient(context, baseUrl!!, converter)
             } else {
@@ -77,6 +84,16 @@ class NetraClient private constructor(
         val memoryCache = object : LruCache<String, ByteArray>(cacheSize) {
             override fun sizeOf(key: String, bitmap: ByteArray): Int {
                 return bitmap.size / 1024
+            }
+        }
+
+        lateinit var connectivityManager: ConnectivityManager
+            private set
+
+        fun initCompanion(context: Context) {
+            if (!::connectivityManager.isInitialized) {
+                connectivityManager = context.applicationContext
+                    .getSystemService(ConnectivityManager::class.java)
             }
         }
     }
@@ -115,9 +132,27 @@ class NetraCall<T>(
     val header: Map<String, String>?,
 ) {
     private var _cache: Cache? = null
+    private var offlinePolicyAction: PolicyAction? = null
+    private var slowNetworkPolicyAction: PolicyAction? = null
 
+    @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
+    private fun isConnected(): Boolean {
+        val network = NetraClient.connectivityManager.activeNetwork ?: return false
+        val caps = NetraClient.connectivityManager.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
     fun withCache(cache: Cache): NetraCall<T> {
         _cache = cache
+        return this
+    }
+
+    fun whenSlowNetwork(action: PolicyAction): NetraCall<T> {
+        slowNetworkPolicyAction = action
+        return this
+    }
+
+    fun whenOffline(action: PolicyAction): NetraCall<T> {
+        offlinePolicyAction = action
         return this
     }
 
@@ -134,6 +169,7 @@ class NetraCall<T>(
     }
 
     fun enqueue(callback: (Status?) -> Unit) {
+        isConnected()
         val reporter = StatusReporter(callback)
         val request = when (command) {
             is Command.Get -> {
@@ -191,86 +227,123 @@ class NetraCall<T>(
             }
         }
 
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                val cacheDirectory = context.cacheDir
-                val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
-                val cacheValue: ByteArray? = if (cacheFile.exists()) {
-                    cacheFile.readBytes()
-                } else {
-                    null
-                }
-                if (_cache == null) {
-                    callback(Status.Failure(e.message))
-                } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
-                    //val cacheValue = NetraClient.memoryCache.get(baseUrl + path)
+        fun useCachePolicy(e: IOException) {
+            val cacheDirectory = context.cacheDir
+            val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
+            val cacheValue: ByteArray? = if (cacheFile.exists()) {
+                cacheFile.readBytes()
+            } else {
+                null
+            }
+            if (_cache == null) {
+                callback(Status.Failure(e.message))
+            } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
+                //val cacheValue = NetraClient.memoryCache.get(baseUrl + path)
 
-                    if (cacheValue == null || cacheValue.isEmpty()) {
-                        callback(Status.Failure(e.message))
+                if (cacheValue == null || cacheValue.isEmpty()) {
+                    callback(Status.Failure(e.message))
+                } else {
+                    if (converter != null) {
+                        val convertedResult: T =
+                            converter.convert(cacheValue, type)
+                        callback(Status.Success(convertedResult, true))
                     } else {
-                        if (converter != null) {
-                            val convertedResult: T =
-                                converter.convert(cacheValue, type)
-                            callback(Status.Success(convertedResult, true))
-                        } else {
-                            //todo
+                        //todo
 //                    val convertedResult: T =
 //                        NetraGsonConverter().convert(response.body.bytes(), type)
-                            callback(Status.Success(cacheValue, true))
+                        callback(Status.Success(cacheValue, true))
+                    }
+                }
+            } else {
+                callback(Status.Failure(e.message))
+            }
+        }
+
+        fun onRequest(retry: Boolean) {
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    if (isConnected()) {
+                        useCachePolicy(e)
+                    } else {
+                        when (offlinePolicyAction) {
+                            PolicyAction.QUEUE -> {
+                                //todo later
+                            }
+
+                            PolicyAction.RETRY -> {
+                                Log.e("retry", "retrying")
+                                if(retry) {
+                                    onRequest(false)
+                                }
+                            }
+
+                            PolicyAction.USE_CACHE -> {
+                                useCachePolicy(e)
+                            }
+
+                            PolicyAction.THROW_ERROR -> {
+                                callback(Status.Failure(e.message))
+                            }
+
+                            else -> {
+                                callback(Status.Failure("Network Error"))
+                            }
                         }
                     }
-                } else {
-                    callback(Status.Failure(e.message))
                 }
-            }
 
-            override fun onResponse(call: Call, response: Response) {
-                if (response.isSuccessful) {
-                    try {
-                        val originalBody = response.body
-                        val bytes = originalBody.bytes()
-                        _cache?.let {
-                            val cacheDirectory = context.cacheDir
-                            val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
-                            Log.e("cache file", "cache file re-created: ${cacheFile.name}")
-                            if (cacheFile.exists()) {
-                                cacheFile.delete()
+                override fun onResponse(call: Call, response: Response) {
+                    val duration = response.receivedResponseAtMillis - response.sentRequestAtMillis
+                    Log.e("duration", "duration: ${duration}")
+                    //todo: add slownetwerk policy
+                    if (response.isSuccessful) {
+                        try {
+                            val originalBody = response.body
+                            val bytes = originalBody.bytes()
+                            _cache?.let {
+                                val cacheDirectory = context.cacheDir
+                                val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
+                                Log.e("cache file", "cache file re-created: ${cacheFile.name}")
+                                if (cacheFile.exists()) {
+                                    cacheFile.delete()
+                                }
+                                cacheFile.createNewFile()
+                                cacheFile.writeBytes(bytes)
                             }
-                            cacheFile.createNewFile()
-                            cacheFile.writeBytes(bytes)
-                        }
-                        NetraClient.memoryCache.put(command.url, bytes)
-                        val newBody = bytes.toResponseBody(originalBody.contentType())
-                        val newResponse = response.newBuilder()
-                            .body(newBody)
-                            .build()
+                            NetraClient.memoryCache.put(command.url, bytes)
+                            val newBody = bytes.toResponseBody(originalBody.contentType())
+                            val newResponse = response.newBuilder()
+                                .body(newBody)
+                                .build()
 
-                        if (converter != null) {
-                            val convertedResult: T =
-                                converter.convert(newResponse.body.bytes(), type)
-                            callback(Status.Success(convertedResult, false))
-                        } else {
-                            if (type == ByteArray::class.java) {
-                                @Suppress("UNCHECKED_CAST")
-                                callback(Status.Success(bytes as T, false))
+                            if (converter != null) {
+                                val convertedResult: T =
+                                    converter.convert(newResponse.body.bytes(), type)
+                                callback(Status.Success(convertedResult, false))
                             } else {
-                                // Fallback for default JSON parsing
+                                if (type == ByteArray::class.java) {
+                                    @Suppress("UNCHECKED_CAST")
+                                    callback(Status.Success(bytes as T, false))
+                                } else {
+                                    // Fallback for default JSON parsing
 
-                                //callback(Status.Success( NetraGsonConverter().convert(bytes, type), false))
+                                    //callback(Status.Success( NetraGsonConverter().convert(bytes, type), false))
+                                }
+
                             }
-
+                        } catch (e: Error) {
+                            callback(Status.Error(response.code, "Parsing Error: ${e.message}"))
+                        } finally {
+                            response.close()
                         }
-                    } catch (e: Error) {
-                        callback(Status.Error(response.code, "Parsing Error: ${e.message}"))
-                    } finally {
+                    } else {
+                        callback(Status.Error(response.code, "Server Error: ${response.code}"))
                         response.close()
                     }
-                } else {
-                    callback(Status.Error(response.code, "Server Error: ${response.code}"))
-                    response.close()
                 }
-            }
-        })
+            })
+        }
+        onRequest(true)
     }
 
     //todo
@@ -285,8 +358,4 @@ class NetraCall<T>(
 //        }
 //    }
 }
-
-
-// todo: post and image load/upload example trying in chaos-serverrr
-//
 

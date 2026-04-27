@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import com.netra.example.ui.theme.NetraTheme
 import com.netra.library.Cache
 import com.netra.library.NetraClient
+import com.netra.library.PolicyAction
 import com.netra.library.Status
 import com.netra.library.converter.NetraGsonConverter
 import okhttp3.MediaType.Companion.toMediaType
@@ -70,6 +71,8 @@ class MainActivity : ComponentActivity() {
                 client.post("/upload", requestBody)
                     .asObject<Any>()
                     .withCache(Cache(null))
+                    .whenOffline(PolicyAction.THROW_ERROR)
+                    .whenSlowNetwork(PolicyAction.USE_CACHE)
                     .enqueue { result ->
                         Log.e("result", result.toString())
                         if (result is Status.Success<*>) {
@@ -129,12 +132,13 @@ class MainActivity : ComponentActivity() {
                                     }
                                     """.trimIndent()
         val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
-        client.get("/?status=404")
+        client.get("/?status=200&delay=8000")
        // client.get("/users")
             .slowMode()
             .addHeader("headercustom", "custom")
             .asObject<Any>()
             .withCache(Cache(null))
+            .whenOffline(PolicyAction.RETRY)
             .enqueue { result ->
                 if (result is Status.Success<*>) {
                     Log.e("result is success", result.response.toString())
