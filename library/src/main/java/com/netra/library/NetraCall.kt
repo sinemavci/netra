@@ -186,7 +186,9 @@ class NetraCall<T>(
                         } else {
                             when (offlinePolicyAction) {
                                 OfflinePolicyAction.QUEUE -> {
-                                    //todo later
+                                    OfflineQueueManager.push {
+                                        onRequest(true)
+                                    }
                                 }
 
                                 OfflinePolicyAction.RETRY -> {

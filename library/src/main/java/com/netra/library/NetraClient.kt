@@ -2,6 +2,9 @@ package com.netra.library
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import androidx.collection.LruCache
 import com.netra.library.converter.IConverter
 import okhttp3.OkHttpClient
@@ -81,6 +84,21 @@ class NetraClient private constructor(
             if (!::connectivityManager.isInitialized) {
                 connectivityManager = context.applicationContext
                     .getSystemService(ConnectivityManager::class.java)
+
+                val networkRequest = NetworkRequest.Builder()
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                    .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                    .build()
+
+                val networkCallback = object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) {
+                        OfflineQueueManager.processQueue()
+                        super.onAvailable(network)
+                    }
+                }
+
+                connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
             }
         }
     }

@@ -138,7 +138,7 @@ class MainActivity : ComponentActivity() {
             .addHeader("headercustom", "custom")
             .asObject<Any>()
             .withCache(Cache(null))
-            .whenSlowNetwork(SlowNetworkPolicyAction.CACHE)
+            .whenOffline(OfflinePolicyAction.QUEUE)
 
         request.enqueue { result ->
             if (result is Status.Success<*>) {
@@ -152,10 +152,10 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        Handler(Looper.getMainLooper()).postDelayed({
-            Log.e("", "cancelled")
-            request.cancel()
-        }, (1000))
+//        Handler(Looper.getMainLooper()).postDelayed({
+//            Log.e("", "cancelled")
+//            request.cancel()
+//        }, (1000))
     }
 
     fun handlePost() {
