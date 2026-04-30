@@ -17,6 +17,7 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.IOException
 import java.io.File
 import java.lang.reflect.Type
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 class NetraCall<T>(
@@ -60,8 +61,16 @@ class NetraCall<T>(
     }
 
     private fun getCacheKey(command: Command): String {
-        val bytes = java.security.MessageDigest.getInstance("MD5").digest(command.url.toByteArray() + command.toString().toByteArray())
+        val bytes = MessageDigest.getInstance("MD5").digest(command.url.toByteArray() + command.toString().toByteArray())
         return bytes.joinToString("") { "%02x".format(it) }
+    }
+
+    fun cancel() {
+        try {
+            CancelableStore.cancel(command.url)
+        } catch (e: Exception) {
+            throw e
+        }
     }
 
     fun enqueue(callback: (Status?) -> Unit) {
@@ -170,36 +179,40 @@ class NetraCall<T>(
         fun enqueueCallback(retry: Boolean, onRequest: (retry: Boolean) -> Unit): Callback {
             return object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    if (isConnected()) {
-                        useCachePolicy(e)
-                    } else {
-                        when (offlinePolicyAction) {
-                            OfflinePolicyAction.QUEUE -> {
-                                //todo later
-                            }
-
-                            OfflinePolicyAction.RETRY -> {
-                                if(retry) {
-                                    onRequest(false)
+                    CancelableStore.remove(command.url)
+                    if(!call.isCanceled()) {
+                        if (isConnected()) {
+                            useCachePolicy(e)
+                        } else {
+                            when (offlinePolicyAction) {
+                                OfflinePolicyAction.QUEUE -> {
+                                    //todo later
                                 }
-                            }
 
-                            OfflinePolicyAction.USE_CACHE -> {
-                                useCachePolicy(e)
-                            }
+                                OfflinePolicyAction.RETRY -> {
+                                    if (retry) {
+                                        onRequest(false)
+                                    }
+                                }
 
-                            OfflinePolicyAction.THROW_ERROR -> {
-                                callback(Status.Failure(e.message))
-                            }
+                                OfflinePolicyAction.USE_CACHE -> {
+                                    useCachePolicy(e)
+                                }
 
-                            else -> {
-                                callback(Status.Failure("Network Error"))
+                                OfflinePolicyAction.THROW_ERROR -> {
+                                    callback(Status.Failure(e.message))
+                                }
+
+                                else -> {
+                                    callback(Status.Failure("Network Error"))
+                                }
                             }
                         }
                     }
                 }
 
                 override fun onResponse(call: Call, response: Response) {
+                    CancelableStore.remove(command.url)
                     if (response.isSuccessful) {
                         try {
                             val originalBody = response.body
@@ -249,7 +262,9 @@ class NetraCall<T>(
         }
 
         fun onRequest(retry: Boolean) {
-            client.newCall(request).enqueue(enqueueCallback(retry) { shouldRetry ->
+            val call = client.newCall(request)
+            CancelableStore.add(command.url, call)
+            call.enqueue(enqueueCallback(retry) { shouldRetry ->
                 onRequest(shouldRetry)
             })
         }
@@ -259,34 +274,25 @@ class NetraCall<T>(
         if (networkSeverity == NetworkSeverity.NORMAL) {
             onRequest(true)
         } else {
-            when (slowNetworkPolicyAction) {
-                SlowNetworkPolicyAction.CANCELABLE -> {
-                    val call = client.newCall(request)
-                    // Register in a global/local map to allow cancellation
-                    //todo
-                    // CancelableRegistry.add(command.url, call)
+            if (slowNetworkPolicyAction is SlowNetworkPolicyAction.CACHE) {
+                useCachePolicy(null)
+            } else if (slowNetworkPolicyAction is SlowNetworkPolicyAction.TIMEOUT) {
+                val shortClient = client.newBuilder()
+                    .readTimeout(
+                        timeout = (slowNetworkPolicyAction as SlowNetworkPolicyAction.TIMEOUT).timeout,
+                        TimeUnit.SECONDS
+                    )
+                    .build()
+
+                shortClient.newCall(request).enqueue(enqueueCallback(true, { onRequest(true) }))
+                return
+            } else if (slowNetworkPolicyAction is SlowNetworkPolicyAction.WAIT) {
+                Handler(Looper.getMainLooper()).postDelayed({
                     onRequest(true)
-                }
-                SlowNetworkPolicyAction.CACHE -> {
-                    useCachePolicy(null)
-                }
-                SlowNetworkPolicyAction.TIMEOUT -> {
-                    val shortClient = client.newBuilder()
-                        .readTimeout(1, TimeUnit.SECONDS)
-                        .build()
-
-                    // Execute with short client (Note: You'll need to pass this client to .newCall)
-                    shortClient.newCall(request).enqueue(enqueueCallback(true, { onRequest(true) }))
-                    return
-                }
-                SlowNetworkPolicyAction.WAIT -> {
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        onRequest(true)
-                    }, 500)
-                    return
-                }
-
-                else -> onRequest(true)
+                }, (slowNetworkPolicyAction as SlowNetworkPolicyAction.WAIT).delay)
+                return
+            } else {
+                onRequest(true)
             }
         }
     }

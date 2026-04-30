@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -70,7 +72,7 @@ class MainActivity : ComponentActivity() {
                     .asObject<Any>()
                     .withCache(Cache(null))
                     .whenOffline(OfflinePolicyAction.THROW_ERROR)
-                    .whenSlowNetwork(SlowNetworkPolicyAction.CANCELABLE)
+                    .whenSlowNetwork(SlowNetworkPolicyAction.CACHE)
                     .enqueue { result ->
                         Log.e("result", result.toString())
                         if (result is Status.Success<*>) {
@@ -130,24 +132,30 @@ class MainActivity : ComponentActivity() {
                                     }
                                     """.trimIndent()
         val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
-        client.get("/?status=200&delay=8000")
-       // client.get("/users")
+        val request = client.get("/?status=200&delay=8000")
+            // client.get("/users")
             .slowMode()
             .addHeader("headercustom", "custom")
             .asObject<Any>()
             .withCache(Cache(null))
-            .whenOffline(OfflinePolicyAction.USE_CACHE)
-            .enqueue { result ->
-                if (result is Status.Success<*>) {
-                    Log.e("result is success", result.response.toString())
-                } else if (result is Status.Retrying) {
-                    Log.e("result is Retrying", result.code.toString())
-                } else if (result is Status.Error) {
-                    Log.e("result is Error", result.code.toString())
-                } else {
-                    Log.e("result is Failure", (result as Status.Failure).message.toString())
-                }
+            .whenSlowNetwork(SlowNetworkPolicyAction.CACHE)
+
+        request.enqueue { result ->
+            if (result is Status.Success<*>) {
+                Log.e("result is success", result.response.toString())
+            } else if (result is Status.Retrying) {
+                Log.e("result is Retrying", result.code.toString())
+            } else if (result is Status.Error) {
+                Log.e("result is Error", result.code.toString())
+            } else {
+                Log.e("result is Failure", (result as Status.Failure).message.toString())
             }
+        }
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            Log.e("", "cancelled")
+            request.cancel()
+        }, (1000))
     }
 
     fun handlePost() {

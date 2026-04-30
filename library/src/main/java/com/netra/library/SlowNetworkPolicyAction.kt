@@ -1,8 +1,8 @@
 package com.netra.library
 
-enum class SlowNetworkPolicyAction {
-    WAIT,
-    TIMEOUT,
-    CACHE,
-    CANCELABLE,
+
+sealed class SlowNetworkPolicyAction {
+    data class WAIT(val delay: Long) : SlowNetworkPolicyAction()
+    data class TIMEOUT(val timeout: Long) : SlowNetworkPolicyAction()
+    data object CACHE : SlowNetworkPolicyAction()
 }
