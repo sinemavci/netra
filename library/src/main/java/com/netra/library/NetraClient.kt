@@ -1,10 +1,11 @@
 package com.netra.library
 
 import android.Manifest
-import android.R
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.annotation.RequiresPermission
 import androidx.collection.LruCache
@@ -20,6 +21,7 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.IOException
 import java.io.File
 import java.lang.reflect.Type
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
@@ -43,6 +45,11 @@ class NetraClient private constructor(
 
         fun addConverterFactory(netraConverter: IConverter?): Builder {
             this.converter = netraConverter
+            return this
+        }
+
+        fun setSlowNetworkThreshold(threshold: Long): Builder {
+            slowNetworkThreshold = threshold
             return this
         }
 
@@ -78,19 +85,24 @@ class NetraClient private constructor(
     }
 
     companion object {
-        val globalFailureCount = AtomicInteger(0)
-        var lastFailureTime: Long = 0
+        var slowNetworkThreshold: Long = 2000
 
-        val memoryCache = object : LruCache<String, ByteArray>(cacheSize) {
+        var isSlowNetwork: Boolean = false
+
+        internal val globalFailureCount = AtomicInteger(0)
+
+        internal var lastFailureTime: Long = 0
+
+        internal val memoryCache = object : LruCache<String, ByteArray>(cacheSize) {
             override fun sizeOf(key: String, bitmap: ByteArray): Int {
                 return bitmap.size / 1024
             }
         }
 
-        lateinit var connectivityManager: ConnectivityManager
+        internal lateinit var connectivityManager: ConnectivityManager
             private set
 
-        fun initCompanion(context: Context) {
+        internal fun initCompanion(context: Context) {
             if (!::connectivityManager.isInitialized) {
                 connectivityManager = context.applicationContext
                     .getSystemService(ConnectivityManager::class.java)
@@ -132,8 +144,8 @@ class NetraCall<T>(
     val header: Map<String, String>?,
 ) {
     private var _cache: Cache? = null
-    private var offlinePolicyAction: PolicyAction? = null
-    private var slowNetworkPolicyAction: PolicyAction? = null
+    private var offlinePolicyAction: OfflinePolicyAction? = null
+    private var slowNetworkPolicyAction: SlowNetworkPolicyAction? = null
 
     @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
     private fun isConnected(): Boolean {
@@ -146,12 +158,12 @@ class NetraCall<T>(
         return this
     }
 
-    fun whenSlowNetwork(action: PolicyAction): NetraCall<T> {
+    fun whenSlowNetwork(action: SlowNetworkPolicyAction): NetraCall<T> {
         slowNetworkPolicyAction = action
         return this
     }
 
-    fun whenOffline(action: PolicyAction): NetraCall<T> {
+    fun whenOffline(action: OfflinePolicyAction): NetraCall<T> {
         offlinePolicyAction = action
         return this
     }
@@ -227,7 +239,7 @@ class NetraCall<T>(
             }
         }
 
-        fun useCachePolicy(e: IOException) {
+        fun useCachePolicy(e: IOException?) {
             val cacheDirectory = context.cacheDir
             val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
             val cacheValue: ByteArray? = if (cacheFile.exists()) {
@@ -236,12 +248,12 @@ class NetraCall<T>(
                 null
             }
             if (_cache == null) {
-                callback(Status.Failure(e.message))
+                callback(Status.Failure(e?.message))
             } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
                 //val cacheValue = NetraClient.memoryCache.get(baseUrl + path)
 
                 if (cacheValue == null || cacheValue.isEmpty()) {
-                    callback(Status.Failure(e.message))
+                    callback(Status.Failure(e?.message))
                 } else {
                     if (converter != null) {
                         val convertedResult: T =
@@ -255,33 +267,44 @@ class NetraCall<T>(
                     }
                 }
             } else {
-                callback(Status.Failure(e.message))
+                callback(Status.Failure(e?.message))
             }
         }
 
-        fun onRequest(retry: Boolean) {
-            client.newCall(request).enqueue(object : Callback {
+        fun _getNetworkSpeedState(): NetworkSeverity {
+            val network =
+                NetraClient.connectivityManager.activeNetwork ?: return NetworkSeverity.NORMAL
+            val caps = NetraClient.connectivityManager.getNetworkCapabilities(network)
+                ?: return NetworkSeverity.NORMAL
+
+            return when {
+                !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED) -> NetworkSeverity.DEGRADED
+                else -> NetworkSeverity.NORMAL
+            }
+        }
+
+        fun enqueueCallback(retry: Boolean, onRequest: (retry: Boolean) -> Unit): Callback {
+            return object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
                     if (isConnected()) {
                         useCachePolicy(e)
                     } else {
                         when (offlinePolicyAction) {
-                            PolicyAction.QUEUE -> {
+                            OfflinePolicyAction.QUEUE -> {
                                 //todo later
                             }
 
-                            PolicyAction.RETRY -> {
-                                Log.e("retry", "retrying")
+                            OfflinePolicyAction.RETRY -> {
                                 if(retry) {
                                     onRequest(false)
                                 }
                             }
 
-                            PolicyAction.USE_CACHE -> {
+                            OfflinePolicyAction.USE_CACHE -> {
                                 useCachePolicy(e)
                             }
 
-                            PolicyAction.THROW_ERROR -> {
+                            OfflinePolicyAction.THROW_ERROR -> {
                                 callback(Status.Failure(e.message))
                             }
 
@@ -293,9 +316,6 @@ class NetraCall<T>(
                 }
 
                 override fun onResponse(call: Call, response: Response) {
-                    val duration = response.receivedResponseAtMillis - response.sentRequestAtMillis
-                    Log.e("duration", "duration: ${duration}")
-                    //todo: add slownetwerk policy
                     if (response.isSuccessful) {
                         try {
                             val originalBody = response.body
@@ -341,9 +361,50 @@ class NetraCall<T>(
                         response.close()
                     }
                 }
+            }
+        }
+
+        fun onRequest(retry: Boolean) {
+            client.newCall(request).enqueue(enqueueCallback(retry) { shouldRetry ->
+                onRequest(shouldRetry)
             })
         }
-        onRequest(true)
+
+        val networkSeverity = _getNetworkSpeedState()
+        Log.e("networkSeverity", "networkSeverity: ${networkSeverity.name}")
+        if (networkSeverity == NetworkSeverity.NORMAL) {
+            onRequest(true)
+        } else {
+            when (slowNetworkPolicyAction) {
+                SlowNetworkPolicyAction.CANCELABLE -> {
+                    val call = client.newCall(request)
+                    // Register in a global/local map to allow cancellation
+                    //todo
+                   // CancelableRegistry.add(command.url, call)
+                    onRequest(true)
+                }
+                SlowNetworkPolicyAction.CACHE -> {
+                    useCachePolicy(null)
+                }
+                SlowNetworkPolicyAction.TIMEOUT -> {
+                    val shortClient = client.newBuilder()
+                        .readTimeout(1, TimeUnit.SECONDS)
+                        .build()
+
+                    // Execute with short client (Note: You'll need to pass this client to .newCall)
+                    shortClient.newCall(request).enqueue(enqueueCallback(true, { onRequest(true) }))
+                    return
+                }
+                SlowNetworkPolicyAction.WAIT -> {
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        onRequest(true)
+                    }, 500)
+                    return
+                }
+
+                else -> onRequest(true)
+            }
+        }
     }
 
     //todo

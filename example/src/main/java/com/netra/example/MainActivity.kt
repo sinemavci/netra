@@ -2,7 +2,6 @@ package com.netra.example
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.media.Image
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -17,19 +16,18 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import com.netra.example.ui.theme.NetraTheme
 import com.netra.library.Cache
 import com.netra.library.NetraClient
-import com.netra.library.PolicyAction
+import com.netra.library.OfflinePolicyAction
+import com.netra.library.SlowNetworkPolicyAction
 import com.netra.library.Status
 import com.netra.library.converter.NetraGsonConverter
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import kotlin.reflect.typeOf
 
 data class Repo(
     val id: Int,
@@ -71,8 +69,8 @@ class MainActivity : ComponentActivity() {
                 client.post("/upload", requestBody)
                     .asObject<Any>()
                     .withCache(Cache(null))
-                    .whenOffline(PolicyAction.THROW_ERROR)
-                    .whenSlowNetwork(PolicyAction.USE_CACHE)
+                    .whenOffline(OfflinePolicyAction.THROW_ERROR)
+                    .whenSlowNetwork(SlowNetworkPolicyAction.CANCELABLE)
                     .enqueue { result ->
                         Log.e("result", result.toString())
                         if (result is Status.Success<*>) {
@@ -138,7 +136,7 @@ class MainActivity : ComponentActivity() {
             .addHeader("headercustom", "custom")
             .asObject<Any>()
             .withCache(Cache(null))
-            .whenOffline(PolicyAction.RETRY)
+            .whenOffline(OfflinePolicyAction.USE_CACHE)
             .enqueue { result ->
                 if (result is Status.Success<*>) {
                     Log.e("result is success", result.response.toString())
