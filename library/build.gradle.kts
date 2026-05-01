@@ -1,11 +1,15 @@
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.ksp)
 }
 
 android {
     namespace = "com.netra.library"
-    compileSdk {
-        version = release(36)
+    compileSdk = 36
+
+    defaultConfig {
+        multiDexEnabled = true
     }
 
     defaultConfig {
@@ -13,6 +17,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
+    }
+
+    kotlinOptions {
+        jvmTarget = "11"
     }
 
     buildTypes {
@@ -30,13 +38,21 @@ android {
     }
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.coroutines)
     implementation(libs.okhttp)
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
     api(libs.gson)
     implementation(libs.material)
+    implementation("androidx.multidex:multidex:2.0.1")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
