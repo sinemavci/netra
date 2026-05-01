@@ -10,11 +10,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import okhttp3.Call
-import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.Response
+import okhttp3.RequestBody.Companion.toRequestBody
 import okio.IOException
 import java.util.UUID
 
@@ -77,13 +75,14 @@ object OfflineQueueManager {
                     values.forEach { value -> headerBuilder.add(key, value) }
                 }
 
-                val body = savedReq.body?.let {
-                    okhttp3.RequestBody.create(null, it)
+                val body = when (savedReq.method) {
+                    "GET" -> null
+                    else -> savedReq.body?.toRequestBody(null)
                 }
 
                 val request = Request.Builder()
                     .url(savedReq.url)
-                    .method(savedReq.method, null)
+                    .method(savedReq.method, body)
                     .headers(headerBuilder.build())
                     .build()
 
