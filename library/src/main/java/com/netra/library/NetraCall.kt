@@ -61,7 +61,8 @@ class NetraCall<T>(
     }
 
     private fun getCacheKey(command: Command): String {
-        val bytes = MessageDigest.getInstance("MD5").digest(command.url.toByteArray() + command.toString().toByteArray())
+        val bytes = MessageDigest.getInstance("MD5")
+            .digest(command.url.toByteArray() + command.toString().toByteArray())
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
@@ -70,6 +71,18 @@ class NetraCall<T>(
             CancelableStore.cancel(command.url)
         } catch (e: Exception) {
             throw e
+        }
+    }
+
+    private fun getNetworkSpeedState(): NetworkSeverity {
+        val network =
+            NetraClient.connectivityManager.activeNetwork ?: return NetworkSeverity.NORMAL
+        val caps = NetraClient.connectivityManager.getNetworkCapabilities(network)
+            ?: return NetworkSeverity.NORMAL
+
+        return when {
+            !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED) -> NetworkSeverity.DEGRADED
+            else -> NetworkSeverity.NORMAL
         }
     }
 
@@ -132,63 +145,48 @@ class NetraCall<T>(
             }
         }
 
-        fun useCachePolicy(e: IOException?) {
-            val cacheDirectory = context.cacheDir
-            val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
-            val cacheValue: ByteArray? = if (cacheFile.exists()) {
-                cacheFile.readBytes()
-            } else {
-                null
-            }
-            if (_cache == null) {
-                callback(Status.Failure(e?.message))
-            } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
-                //val cacheValue = NetraClient.memoryCache.get(baseUrl + path)
-
-                if (cacheValue == null || cacheValue.isEmpty()) {
-                    callback(Status.Failure(e?.message))
-                } else {
-                    if (converter != null) {
-                        val convertedResult: T =
-                            converter.convert(cacheValue, type)
-                        callback(Status.Success(convertedResult, true))
-                    } else {
-                        //todo
-//                    val convertedResult: T =
-//                        NetraGsonConverter().convert(response.body.bytes(), type)
-                        callback(Status.Success(cacheValue, true))
-                    }
-                }
-            } else {
-                callback(Status.Failure(e?.message))
-            }
-        }
-
-        fun _getNetworkSpeedState(): NetworkSeverity {
-            val network =
-                NetraClient.connectivityManager.activeNetwork ?: return NetworkSeverity.NORMAL
-            val caps = NetraClient.connectivityManager.getNetworkCapabilities(network)
-                ?: return NetworkSeverity.NORMAL
-
-            return when {
-                !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED) -> NetworkSeverity.DEGRADED
-                else -> NetworkSeverity.NORMAL
-            }
-        }
-
         fun enqueueCallback(retry: Boolean, onRequest: (retry: Boolean) -> Unit): Callback {
             return object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
                     CancelableStore.remove(command.url)
-                    if(!call.isCanceled()) {
+                    if (!call.isCanceled()) {
                         if (isConnected()) {
-                            useCachePolicy(e)
+                            val cacheDirectory = context.cacheDir
+                            val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
+                            val cacheValue: ByteArray? = if (cacheFile.exists()) {
+                                cacheFile.readBytes()
+                            } else {
+                                null
+                            }
+                            if (_cache == null) {
+                                callback(Status.Failure(e?.message))
+                            } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
+                                //val cacheValue = NetraClient.memoryCache.get(baseUrl + path)
+
+                                if (cacheValue == null || cacheValue.isEmpty()) {
+                                    callback(Status.Failure(e?.message))
+                                } else {
+                                    if (converter != null) {
+                                        val convertedResult: T =
+                                            converter.convert(cacheValue, type)
+                                        callback(Status.Success(convertedResult, true))
+                                    } else {
+                                        //todo
+//                    val convertedResult: T =
+//                        NetraGsonConverter().convert(response.body.bytes(), type)
+                                        callback(Status.Success(cacheValue, true))
+                                    }
+                                }
+                            } else {
+                                callback(Status.Failure(e?.message))
+                            }
                         } else {
                             when (offlinePolicyAction) {
                                 OfflinePolicyAction.QUEUE -> {
-                                    OfflineQueueManager.push {
-                                        onRequest(true)
-                                    }
+                                    //todo
+//                                    OfflineQueueManager.push {
+//                                        onRequest(true)
+//                                    }
                                 }
 
                                 OfflinePolicyAction.RETRY -> {
@@ -198,7 +196,36 @@ class NetraCall<T>(
                                 }
 
                                 OfflinePolicyAction.USE_CACHE -> {
-                                    useCachePolicy(e)
+                                    val cacheDirectory = context.cacheDir
+                                    val cacheFile =
+                                        File("${cacheDirectory}/${getCacheKey(command)}")
+                                    val cacheValue: ByteArray? = if (cacheFile.exists()) {
+                                        cacheFile.readBytes()
+                                    } else {
+                                        null
+                                    }
+                                    if (_cache == null) {
+                                        callback(Status.Failure(e?.message))
+                                    } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
+                                        //val cacheValue = NetraClient.memoryCache.get(baseUrl + path)
+
+                                        if (cacheValue == null || cacheValue.isEmpty()) {
+                                            callback(Status.Failure(e?.message))
+                                        } else {
+                                            if (converter != null) {
+                                                val convertedResult: T =
+                                                    converter.convert(cacheValue, type)
+                                                callback(Status.Success(convertedResult, true))
+                                            } else {
+                                                //todo
+//                    val convertedResult: T =
+//                        NetraGsonConverter().convert(response.body.bytes(), type)
+                                                callback(Status.Success(cacheValue, true))
+                                            }
+                                        }
+                                    } else {
+                                        callback(Status.Failure(e?.message))
+                                    }
                                 }
 
                                 OfflinePolicyAction.THROW_ERROR -> {
@@ -271,13 +298,41 @@ class NetraCall<T>(
             })
         }
 
-        val networkSeverity = _getNetworkSpeedState()
+        val networkSeverity = getNetworkSpeedState()
         Log.e("networkSeverity", "networkSeverity: ${networkSeverity.name}")
         if (networkSeverity == NetworkSeverity.NORMAL) {
             onRequest(true)
         } else {
             if (slowNetworkPolicyAction is SlowNetworkPolicyAction.CACHE) {
-                useCachePolicy(null)
+                val cacheDirectory = context.cacheDir
+                val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
+                val cacheValue: ByteArray? = if (cacheFile.exists()) {
+                    cacheFile.readBytes()
+                } else {
+                    null
+                }
+                if (_cache == null) {
+                    callback(Status.Failure(null))
+                } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
+                    //val cacheValue = NetraClient.memoryCache.get(baseUrl + path)
+
+                    if (cacheValue == null || cacheValue.isEmpty()) {
+                        callback(Status.Failure(null))
+                    } else {
+                        if (converter != null) {
+                            val convertedResult: T =
+                                converter.convert(cacheValue, type)
+                            callback(Status.Success(convertedResult, true))
+                        } else {
+                            //todo
+//                    val convertedResult: T =
+//                        NetraGsonConverter().convert(response.body.bytes(), type)
+                            callback(Status.Success(cacheValue, true))
+                        }
+                    }
+                } else {
+                    callback(Status.Failure(null))
+                }
             } else if (slowNetworkPolicyAction is SlowNetworkPolicyAction.TIMEOUT) {
                 val shortClient = client.newBuilder()
                     .readTimeout(
