@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
                     .asObject<Any>()
                     .withCache(Cache(null))
                     .whenOffline(OfflinePolicyAction.THROW_ERROR)
-                    .whenSlowNetwork(SlowNetworkPolicyAction.CACHE)
+                    .whenSlowNetwork(SlowNetworkPolicyAction.USE_CACHE)
                     .enqueue { result ->
                         Log.e("result", result.toString())
                         if (result is Status.Success<*>) {
