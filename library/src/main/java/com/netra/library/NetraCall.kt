@@ -311,7 +311,7 @@ class NetraCall<T>(
                 }
             })
         } else {
-            if (slowNetworkPolicyAction is SlowNetworkPolicyAction.CACHE) {
+            if (slowNetworkPolicyAction is SlowNetworkPolicyAction.USE_CACHE) {
                 val cacheDirectory = context.cacheDir
                 val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
                 val cacheValue: ByteArray? = if (cacheFile.exists()) {
