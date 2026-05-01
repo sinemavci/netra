@@ -38,6 +38,7 @@ class NetraCall<T>(
         val caps = NetraClient.connectivityManager.getNetworkCapabilities(network) ?: return false
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
+
     fun withCache(cache: Cache): NetraCall<T> {
         _cache = cache
         return this
@@ -53,6 +54,14 @@ class NetraCall<T>(
         return this
     }
 
+    fun cancel() {
+        try {
+            CancelableStore.cancel(command.url)
+        } catch (e: Exception) {
+            throw e
+        }
+    }
+
     private fun shouldUseCache(file: File, ttlMillis: Long): Boolean {
         val lastModified = file.lastModified()
         val now = System.currentTimeMillis()
@@ -66,14 +75,6 @@ class NetraCall<T>(
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
-    fun cancel() {
-        try {
-            CancelableStore.cancel(command.url)
-        } catch (e: Exception) {
-            throw e
-        }
-    }
-
     private fun getNetworkSpeedState(): NetworkSeverity {
         val network =
             NetraClient.connectivityManager.activeNetwork ?: return NetworkSeverity.NORMAL
@@ -83,6 +84,154 @@ class NetraCall<T>(
         return when {
             !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED) -> NetworkSeverity.DEGRADED
             else -> NetworkSeverity.NORMAL
+        }
+    }
+
+    private fun handleOnFailure(call: Call, e: IOException, callback: (Status?) -> Unit) {
+        CancelableStore.remove(command.url)
+        if (!call.isCanceled()) {
+            if (isConnected()) {
+                val cacheDirectory = context.cacheDir
+                val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
+                val cacheValue: ByteArray? = if (cacheFile.exists()) {
+                    cacheFile.readBytes()
+                } else {
+                    null
+                }
+                if (_cache == null) {
+                    callback(Status.Failure(e.message))
+                } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
+                    //val cacheValue = NetraClient.memoryCache.get(baseUrl + path)
+
+                    if (cacheValue == null || cacheValue.isEmpty()) {
+                        callback(Status.Failure(e.message))
+                    } else {
+                        if (converter != null) {
+                            val convertedResult: T =
+                                converter.convert(cacheValue, type)
+                            callback(Status.Success(convertedResult, true))
+                        } else {
+                            //todo
+//                    val convertedResult: T =
+//                        NetraGsonConverter().convert(response.body.bytes(), type)
+                            callback(Status.Success(cacheValue, true))
+                        }
+                    }
+                } else {
+                    callback(Status.Failure(e.message))
+                }
+            } else {
+                when (offlinePolicyAction) {
+                    OfflinePolicyAction.QUEUE -> {
+                        OfflineQueueManager.push(call.request())
+                    }
+
+                    OfflinePolicyAction.RETRY -> {
+                        //todo: retry flag
+                        val call = client.newCall(call.request())
+                        CancelableStore.add(command.url, call)
+
+                        call.enqueue(object : Callback {
+                            override fun onFailure(call: Call, e: IOException) {
+                                handleOnFailure(call, e, callback)
+                            }
+
+                            override fun onResponse(call: Call, response: Response) {
+                                handleOnResponse(response, callback)
+                            }
+                        })
+                    }
+
+                    OfflinePolicyAction.USE_CACHE -> {
+                        val cacheDirectory = context.cacheDir
+                        val cacheFile =
+                            File("${cacheDirectory}/${getCacheKey(command)}")
+                        val cacheValue: ByteArray? = if (cacheFile.exists()) {
+                            cacheFile.readBytes()
+                        } else {
+                            null
+                        }
+                        if (_cache == null) {
+                            callback(Status.Failure(e?.message))
+                        } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
+                            //val cacheValue = NetraClient.memoryCache.get(baseUrl + path)
+
+                            if (cacheValue == null || cacheValue.isEmpty()) {
+                                callback(Status.Failure(e?.message))
+                            } else {
+                                if (converter != null) {
+                                    val convertedResult: T =
+                                        converter.convert(cacheValue, type)
+                                    callback(Status.Success(convertedResult, true))
+                                } else {
+                                    //todo
+//                    val convertedResult: T =
+//                        NetraGsonConverter().convert(response.body.bytes(), type)
+                                    callback(Status.Success(cacheValue, true))
+                                }
+                            }
+                        } else {
+                            callback(Status.Failure(e?.message))
+                        }
+                    }
+
+                    OfflinePolicyAction.THROW_ERROR -> {
+                        callback(Status.Failure(e.message))
+                    }
+
+                    else -> {
+                        callback(Status.Failure("Network Error"))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun handleOnResponse(response: Response, callback: (Status?) -> Unit) {
+        CancelableStore.remove(command.url)
+        if (response.isSuccessful) {
+            try {
+                val originalBody = response.body
+                val bytes = originalBody.bytes()
+                _cache?.let {
+                    val cacheDirectory = context.cacheDir
+                    val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
+                    Log.e("cache file", "cache file re-created: ${cacheFile.name}")
+                    if (cacheFile.exists()) {
+                        cacheFile.delete()
+                    }
+                    cacheFile.createNewFile()
+                    cacheFile.writeBytes(bytes)
+                }
+                NetraClient.memoryCache.put(command.url, bytes)
+                val newBody = bytes.toResponseBody(originalBody.contentType())
+                val newResponse = response.newBuilder()
+                    .body(newBody)
+                    .build()
+
+                if (converter != null) {
+                    val convertedResult: T =
+                        converter.convert(newResponse.body.bytes(), type)
+                    callback(Status.Success(convertedResult, false))
+                } else {
+                    if (type == ByteArray::class.java) {
+                        @Suppress("UNCHECKED_CAST")
+                        callback(Status.Success(bytes as T, false))
+                    } else {
+                        // Fallback for default JSON parsing
+
+                        //callback(Status.Success( NetraGsonConverter().convert(bytes, type), false))
+                    }
+
+                }
+            } catch (e: Error) {
+                callback(Status.Error(response.code, "Parsing Error: ${e.message}"))
+            } finally {
+                response.close()
+            }
+        } else {
+            callback(Status.Error(response.code, "Server Error: ${response.code}"))
+            response.close()
         }
     }
 
@@ -145,163 +294,20 @@ class NetraCall<T>(
             }
         }
 
-        fun enqueueCallback(retry: Boolean, onRequest: (retry: Boolean) -> Unit): Callback {
-            return object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    CancelableStore.remove(command.url)
-                    if (!call.isCanceled()) {
-                        if (isConnected()) {
-                            val cacheDirectory = context.cacheDir
-                            val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
-                            val cacheValue: ByteArray? = if (cacheFile.exists()) {
-                                cacheFile.readBytes()
-                            } else {
-                                null
-                            }
-                            if (_cache == null) {
-                                callback(Status.Failure(e?.message))
-                            } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
-                                //val cacheValue = NetraClient.memoryCache.get(baseUrl + path)
-
-                                if (cacheValue == null || cacheValue.isEmpty()) {
-                                    callback(Status.Failure(e?.message))
-                                } else {
-                                    if (converter != null) {
-                                        val convertedResult: T =
-                                            converter.convert(cacheValue, type)
-                                        callback(Status.Success(convertedResult, true))
-                                    } else {
-                                        //todo
-//                    val convertedResult: T =
-//                        NetraGsonConverter().convert(response.body.bytes(), type)
-                                        callback(Status.Success(cacheValue, true))
-                                    }
-                                }
-                            } else {
-                                callback(Status.Failure(e?.message))
-                            }
-                        } else {
-                            when (offlinePolicyAction) {
-                                OfflinePolicyAction.QUEUE -> {
-                                    //todo
-//                                    OfflineQueueManager.push {
-//                                        onRequest(true)
-//                                    }
-                                }
-
-                                OfflinePolicyAction.RETRY -> {
-                                    if (retry) {
-                                        onRequest(false)
-                                    }
-                                }
-
-                                OfflinePolicyAction.USE_CACHE -> {
-                                    val cacheDirectory = context.cacheDir
-                                    val cacheFile =
-                                        File("${cacheDirectory}/${getCacheKey(command)}")
-                                    val cacheValue: ByteArray? = if (cacheFile.exists()) {
-                                        cacheFile.readBytes()
-                                    } else {
-                                        null
-                                    }
-                                    if (_cache == null) {
-                                        callback(Status.Failure(e?.message))
-                                    } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
-                                        //val cacheValue = NetraClient.memoryCache.get(baseUrl + path)
-
-                                        if (cacheValue == null || cacheValue.isEmpty()) {
-                                            callback(Status.Failure(e?.message))
-                                        } else {
-                                            if (converter != null) {
-                                                val convertedResult: T =
-                                                    converter.convert(cacheValue, type)
-                                                callback(Status.Success(convertedResult, true))
-                                            } else {
-                                                //todo
-//                    val convertedResult: T =
-//                        NetraGsonConverter().convert(response.body.bytes(), type)
-                                                callback(Status.Success(cacheValue, true))
-                                            }
-                                        }
-                                    } else {
-                                        callback(Status.Failure(e?.message))
-                                    }
-                                }
-
-                                OfflinePolicyAction.THROW_ERROR -> {
-                                    callback(Status.Failure(e.message))
-                                }
-
-                                else -> {
-                                    callback(Status.Failure("Network Error"))
-                                }
-                            }
-                        }
-                    }
-                }
-
-                override fun onResponse(call: Call, response: Response) {
-                    CancelableStore.remove(command.url)
-                    if (response.isSuccessful) {
-                        try {
-                            val originalBody = response.body
-                            val bytes = originalBody.bytes()
-                            _cache?.let {
-                                val cacheDirectory = context.cacheDir
-                                val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
-                                Log.e("cache file", "cache file re-created: ${cacheFile.name}")
-                                if (cacheFile.exists()) {
-                                    cacheFile.delete()
-                                }
-                                cacheFile.createNewFile()
-                                cacheFile.writeBytes(bytes)
-                            }
-                            NetraClient.memoryCache.put(command.url, bytes)
-                            val newBody = bytes.toResponseBody(originalBody.contentType())
-                            val newResponse = response.newBuilder()
-                                .body(newBody)
-                                .build()
-
-                            if (converter != null) {
-                                val convertedResult: T =
-                                    converter.convert(newResponse.body.bytes(), type)
-                                callback(Status.Success(convertedResult, false))
-                            } else {
-                                if (type == ByteArray::class.java) {
-                                    @Suppress("UNCHECKED_CAST")
-                                    callback(Status.Success(bytes as T, false))
-                                } else {
-                                    // Fallback for default JSON parsing
-
-                                    //callback(Status.Success( NetraGsonConverter().convert(bytes, type), false))
-                                }
-
-                            }
-                        } catch (e: Error) {
-                            callback(Status.Error(response.code, "Parsing Error: ${e.message}"))
-                        } finally {
-                            response.close()
-                        }
-                    } else {
-                        callback(Status.Error(response.code, "Server Error: ${response.code}"))
-                        response.close()
-                    }
-                }
-            }
-        }
-
-        fun onRequest(retry: Boolean) {
-            val call = client.newCall(request)
-            CancelableStore.add(command.url, call)
-            call.enqueue(enqueueCallback(retry) { shouldRetry ->
-                onRequest(shouldRetry)
-            })
-        }
-
         val networkSeverity = getNetworkSpeedState()
         Log.e("networkSeverity", "networkSeverity: ${networkSeverity.name}")
         if (networkSeverity == NetworkSeverity.NORMAL) {
-            onRequest(true)
+            val call = client.newCall(request)
+            CancelableStore.add(command.url, call)
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    handleOnFailure(call, e, callback)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    handleOnResponse(response, callback)
+                }
+            })
         } else {
             if (slowNetworkPolicyAction is SlowNetworkPolicyAction.CACHE) {
                 val cacheDirectory = context.cacheDir
@@ -341,15 +347,43 @@ class NetraCall<T>(
                     )
                     .build()
 
-                shortClient.newCall(request).enqueue(enqueueCallback(true, { onRequest(true) }))
+                shortClient.newCall(request).enqueue(object : Callback {
+                    override fun onFailure(call: Call, e: IOException) {
+                        handleOnFailure(call, e, callback)
+                    }
+
+                    override fun onResponse(call: Call, response: Response) {
+                        handleOnResponse(response, callback)
+                    }
+                })
                 return
             } else if (slowNetworkPolicyAction is SlowNetworkPolicyAction.WAIT) {
                 Handler(Looper.getMainLooper()).postDelayed({
-                    onRequest(true)
+                    val call = client.newCall(request)
+                    CancelableStore.add(command.url, call)
+                    call.enqueue(object : Callback {
+                        override fun onFailure(call: Call, e: IOException) {
+                            handleOnFailure(call, e, callback)
+                        }
+
+                        override fun onResponse(call: Call, response: Response) {
+                            handleOnResponse(response, callback)
+                        }
+                    })
                 }, (slowNetworkPolicyAction as SlowNetworkPolicyAction.WAIT).delay)
                 return
             } else {
-                onRequest(true)
+                val call = client.newCall(request)
+                CancelableStore.add(command.url, call)
+                call.enqueue(object : Callback {
+                    override fun onFailure(call: Call, e: IOException) {
+                        handleOnFailure(call, e, callback)
+                    }
+
+                    override fun onResponse(call: Call, response: Response) {
+                        handleOnResponse(response, callback)
+                    }
+                })
             }
         }
     }
