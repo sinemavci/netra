@@ -1,24 +1,105 @@
 package com.netra.library
 
-object OfflineQueueManager {
-    private val queue = mutableListOf<() -> Unit>()
+import android.content.Context
+import android.util.Log
+import com.google.gson.Gson
+import com.netra.library.database.NetraDatabase
+import com.netra.library.database.PersistentRequest
+import com.netra.library.database.QueueDao
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okio.IOException
+import java.util.UUID
 
-    fun push(request: () -> Unit) {
-        queue.add(request)
-        // TODO: Save to Room/Database here
-        //Log.e("Netra", "Request queued: ${request.url}")
+object OfflineQueueManager {
+    private lateinit var dao: QueueDao
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    fun init(context: Context) {
+        dao = NetraDatabase.getDatabase(context).queueDao()
+    }
+
+    fun push(request: Request) {
+        val jsonConverter = Gson()
+        scope.launch {
+            dao.insertRequest(
+                PersistentRequest(
+                    id = UUID.randomUUID().toString(),
+                    url = request.url.toString(),
+                    method = request.method,
+                    body = jsonConverter.toJson(request.body),
+                    headersJson = jsonConverter.toJson(request.headers.toMultimap()),
+                )
+            )
+            Log.e("Netra", "Request persisted to DB: ${request.url}")
+        }
     }
 
     fun remove(id: String) {
-        // queue.removeAll { it.id == id }
+        scope.launch {
+            dao.deleteRequest(id)
+        }
     }
 
-    fun processQueue() {
-        //todo: check call is cancelled before?
-        if (queue.isEmpty()) return
-        queue.forEach {
-            it.invoke()
+    fun processQueue(client: OkHttpClient) {
+        val gson = Gson()
+        scope.launch {
+            //todo: check call is cancelled before?
+            if (dao.getAllRequests().isEmpty()) {
+                return@launch
+            }
+            dao.getAllRequests().forEach { savedReq ->
+
+//                val response = client.newCall(request).execute()
+//                if (converter != null) {
+//                    val convertedResult: T = converter.convert(response.body.bytes(), type)
+//                    return convertedResult
+//                } else {
+//                    val convertedResult: T =
+//                        NetraGsonConverter().convert(response.body.bytes(), type)
+//                    return convertedResult
+//                }
+
+                val headerMap: Map<String, List<String>> = gson.fromJson(
+                    savedReq.headersJson,
+                    object : com.google.gson.reflect.TypeToken<Map<String, List<String>>>() {}.type
+                )
+
+                val headerBuilder = okhttp3.Headers.Builder()
+                headerMap.forEach { (key, values) ->
+                    values.forEach { value -> headerBuilder.add(key, value) }
+                }
+
+                val body = savedReq.body?.let {
+                    okhttp3.RequestBody.create(null, it)
+                }
+
+                val request = Request.Builder()
+                    .url(savedReq.url)
+                    .method(savedReq.method, null)
+                    .headers(headerBuilder.build())
+                    .build()
+
+                try {
+                    val response = client.newCall(request).execute()
+                    if (response.isSuccessful) {
+                        dao.deleteRequest(savedReq.id)
+                        Log.d("Netra", "Successfully synced: ${savedReq.url} ${response.body}")
+                    }
+                    response.close()
+                } catch (e: IOException) {
+                    Log.e("Netra", "Sync failed for ${savedReq.url}, keeping in queue.")
+                    // Don't delete; it stays in DB for next attempt
+                }
+                dao.deleteRequest(savedReq.id)
+            }
         }
-        queue.clear()
     }
 }

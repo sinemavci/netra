@@ -18,7 +18,7 @@ class NetraInterceptor : Interceptor {
         val request = chain.request()
         val reporter = request.tag(StatusReporter::class.java)
 
-        Log.e("NetraClient.globalFailureCount:", "NetraClient.globalFailureCount.get(): ${NetraClient.globalFailureCount.get()}")
+        Log.e("NetraClient.kt.globalFailureCount:", "NetraClient.kt.globalFailureCount.get(): ${NetraClient.globalFailureCount.get()}")
 
         if (NetraClient.globalFailureCount.get() >= maxRetries) {
             val timeSinceLastFailure = System.currentTimeMillis() - NetraClient.lastFailureTime

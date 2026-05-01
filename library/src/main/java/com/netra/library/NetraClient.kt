@@ -18,12 +18,10 @@ class NetraClient private constructor(
     var baseUrl: String? = null,
     var converter: IConverter? = null,
 ) {
-    private val client = OkHttpClient().newBuilder().addInterceptor(NetraInterceptor()).build()
-
     data class Builder(
         val context: Context,
         var baseUrl: String? = null,
-        var converter: IConverter? = null
+        var converter: IConverter? = null,
     ) {
         fun baseUrl(url: String): Builder {
             this.baseUrl = url
@@ -59,11 +57,21 @@ class NetraClient private constructor(
     }
 
     fun patch(path: String, requestBody: RequestBody): RequestBuilder {
-        return RequestBuilder(context, Command.Patch(baseUrl + path, requestBody), client, converter)
+        return RequestBuilder(
+            context,
+            Command.Patch(baseUrl + path, requestBody),
+            client,
+            converter
+        )
     }
 
-    fun delete(path: String, requestBody: RequestBody? = RequestBody.EMPTY): RequestBuilder {
-        return RequestBuilder(context, Command.Delete(baseUrl + path, requestBody), client, converter)
+    fun delete(path: String, requestBody: RequestBody? = null): RequestBuilder {
+        return RequestBuilder(
+            context,
+            Command.Delete(baseUrl + path, requestBody),
+            client,
+            converter
+        )
     }
 
     companion object {
@@ -80,26 +88,34 @@ class NetraClient private constructor(
         internal lateinit var connectivityManager: ConnectivityManager
             private set
 
+        internal lateinit var client: OkHttpClient
+            private set
+
+
         internal fun initCompanion(context: Context) {
             if (!::connectivityManager.isInitialized) {
                 connectivityManager = context.applicationContext
                     .getSystemService(ConnectivityManager::class.java)
-
-                val networkRequest = NetworkRequest.Builder()
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                    .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                    .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                    .build()
-
-                val networkCallback = object : ConnectivityManager.NetworkCallback() {
-                    override fun onAvailable(network: Network) {
-                        OfflineQueueManager.processQueue()
-                        super.onAvailable(network)
-                    }
-                }
-
-                connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
             }
+            if (!::client.isInitialized) {
+                client = OkHttpClient().newBuilder().addInterceptor(NetraInterceptor()).build()
+            }
+
+            OfflineQueueManager.init(context.applicationContext)
+            val networkRequest = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                .build()
+
+            val networkCallback = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    OfflineQueueManager.processQueue(client = client)
+                    super.onAvailable(network)
+                }
+            }
+
+            connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
         }
     }
 }

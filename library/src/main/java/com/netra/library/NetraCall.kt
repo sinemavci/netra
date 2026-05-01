@@ -154,7 +154,7 @@ class NetraCall<T>(
                         if (_cache == null) {
                             callback(Status.Failure(e?.message))
                         } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
-                            //val cacheValue = NetraClient.memoryCache.get(baseUrl + path)
+                            //val cacheValue = NetraClient.kt.memoryCache.get(baseUrl + path)
 
                             if (cacheValue == null || cacheValue.isEmpty()) {
                                 callback(Status.Failure(e?.message))
@@ -192,37 +192,39 @@ class NetraCall<T>(
         if (response.isSuccessful) {
             try {
                 val originalBody = response.body
-                val bytes = originalBody.bytes()
-                _cache?.let {
-                    val cacheDirectory = context.cacheDir
-                    val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
-                    Log.e("cache file", "cache file re-created: ${cacheFile.name}")
-                    if (cacheFile.exists()) {
-                        cacheFile.delete()
+                val bytes = originalBody?.bytes()
+                bytes?.let {
+                    _cache?.let {
+                        val cacheDirectory = context.cacheDir
+                        val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
+                        Log.e("cache file", "cache file re-created: ${cacheFile.name}")
+                        if (cacheFile.exists()) {
+                            cacheFile.delete()
+                        }
+                        cacheFile.createNewFile()
+                        cacheFile.writeBytes(bytes)
                     }
-                    cacheFile.createNewFile()
-                    cacheFile.writeBytes(bytes)
-                }
-                NetraClient.memoryCache.put(command.url, bytes)
-                val newBody = bytes.toResponseBody(originalBody.contentType())
-                val newResponse = response.newBuilder()
-                    .body(newBody)
-                    .build()
+                    NetraClient.memoryCache.put(command.url, bytes)
+                    val newBody = bytes.toResponseBody(originalBody.contentType())
+                    val newResponse = response.newBuilder()
+                        .body(newBody)
+                        .build()
 
-                if (converter != null) {
-                    val convertedResult: T =
-                        converter.convert(newResponse.body.bytes(), type)
-                    callback(Status.Success(convertedResult, false))
-                } else {
-                    if (type == ByteArray::class.java) {
-                        @Suppress("UNCHECKED_CAST")
-                        callback(Status.Success(bytes as T, false))
+                    if (converter != null) {
+                        val convertedResult: T =
+                            converter.convert(newResponse.body!!.bytes(), type)
+                        callback(Status.Success(convertedResult, false))
                     } else {
-                        // Fallback for default JSON parsing
+                        if (type == ByteArray::class.java) {
+                            @Suppress("UNCHECKED_CAST")
+                            callback(Status.Success(bytes as T, false))
+                        } else {
+                            // Fallback for default JSON parsing
 
-                        //callback(Status.Success( NetraGsonConverter().convert(bytes, type), false))
+                            //callback(Status.Success( NetraGsonConverter().convert(bytes, type), false))
+                        }
+
                     }
-
                 }
             } catch (e: Error) {
                 callback(Status.Error(response.code, "Parsing Error: ${e.message}"))

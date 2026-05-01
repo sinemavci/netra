@@ -36,7 +36,7 @@ data class Repo(
     val name: String
 )
 
-//val client = NetraClient.Builder()
+//val client = NetraClient.kt.Builder()
 //    .baseUrl("https://api.github.com")
 //    .addConverterFactory(
 //        NetraGsonConverter()
@@ -139,6 +139,7 @@ class MainActivity : ComponentActivity() {
             .asObject<Any>()
             .withCache(Cache(null))
             .whenOffline(OfflinePolicyAction.QUEUE)
+            .whenSlowNetwork(SlowNetworkPolicyAction.TIMEOUT(timeout = 3))
 
         request.enqueue { result ->
             if (result is Status.Success<*>) {
