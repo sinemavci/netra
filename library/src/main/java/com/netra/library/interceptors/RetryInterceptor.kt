@@ -1,5 +1,7 @@
-package com.netra.library
+package com.netra.library.interceptors
 
+import com.netra.library.Status
+import com.netra.library.StatusReporter
 import okhttp3.Interceptor
 import okhttp3.Response
 import okio.IOException
@@ -19,7 +21,7 @@ class RetryInterceptor(private val maxRetries: Int) : Interceptor {
             } catch (e: IOException) {
                 lastException = e
                 attempt++
-                Thread.sleep(4000L * attempt)
+                Thread.sleep(2000L * attempt)
             }
         }
         throw lastException!!

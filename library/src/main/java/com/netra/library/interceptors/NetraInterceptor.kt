@@ -1,7 +1,10 @@
-package com.netra.library
+package com.netra.library.interceptors
 
-import android.util.Log
-import okhttp3.*
+import com.netra.library.NetraClient
+import com.netra.library.Status
+import com.netra.library.StatusReporter
+import okhttp3.Interceptor
+import okhttp3.Response
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -17,8 +20,6 @@ class NetraInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         val reporter = request.tag(StatusReporter::class.java)
-
-        Log.e("NetraClient.kt.globalFailureCount:", "NetraClient.kt.globalFailureCount.get(): ${NetraClient.globalFailureCount.get()}")
 
         if (NetraClient.globalFailureCount.get() >= maxRetries) {
             val timeSinceLastFailure = System.currentTimeMillis() - NetraClient.lastFailureTime
@@ -51,7 +52,7 @@ class NetraInterceptor : Interceptor {
             response = currentChain.proceed(request)
         }
 
-        if (response.code >= 500) {
+        if (shouldRetry(response)) {
             NetraClient.globalFailureCount.incrementAndGet()
             NetraClient.lastFailureTime = System.currentTimeMillis()
         } else if (response.isSuccessful) {

@@ -8,6 +8,7 @@ import android.os.Looper
 import android.util.Log
 import androidx.annotation.RequiresPermission
 import com.netra.library.converter.IConverter
+import com.netra.library.interceptors.RetryInterceptor
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.OkHttpClient
@@ -218,7 +219,6 @@ class NetraCall<T>(
     }
 
     fun enqueue(callback: (Status?) -> Unit) {
-        isConnected()
         val reporter = StatusReporter(callback)
         val request = when (command) {
             is Command.Get -> {
@@ -277,7 +277,6 @@ class NetraCall<T>(
         }
 
         val networkSeverity = getNetworkSpeedState()
-        Log.e("networkSeverity", "networkSeverity: ${networkSeverity.name}")
         if (networkSeverity == NetworkSeverity.NORMAL) {
             val call = client.newCall(request)
             CancelableStore.add(command.url, call)

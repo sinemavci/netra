@@ -49,22 +49,11 @@ object OfflineQueueManager {
     fun processQueue(client: OkHttpClient) {
         val gson = Gson()
         scope.launch {
-            //todo: check call is cancelled before?
+            //todo: check call is cancelled before?, converted is not enable, and enqueue not exist
             if (dao.getAllRequests().isEmpty()) {
                 return@launch
             }
             dao.getAllRequests().forEach { savedReq ->
-
-//                val response = client.newCall(request).execute()
-//                if (converter != null) {
-//                    val convertedResult: T = converter.convert(response.body.bytes(), type)
-//                    return convertedResult
-//                } else {
-//                    val convertedResult: T =
-//                        NetraGsonConverter().convert(response.body.bytes(), type)
-//                    return convertedResult
-//                }
-
                 val headerMap: Map<String, List<String>> = gson.fromJson(
                     savedReq.headersJson,
                     object : com.google.gson.reflect.TypeToken<Map<String, List<String>>>() {}.type
