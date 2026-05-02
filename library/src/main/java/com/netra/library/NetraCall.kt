@@ -67,6 +67,17 @@ class NetraCall<T>(
         }
     }
 
+    private fun handleConvertedResponse(byteArray: ByteArray): T {
+        if (converter != null) {
+            val convertedResult: T =
+                converter.convert(byteArray, type)
+            return convertedResult
+        } else {
+            @Suppress("UNCHECKED_CAST")
+            return byteArray as T
+        }
+    }
+
     private fun shouldUseCache(file: File, ttlMillis: Long): Boolean {
         val lastModified = file.lastModified()
         val now = System.currentTimeMillis()
@@ -111,16 +122,8 @@ class NetraCall<T>(
                     if (cacheValue == null || cacheValue.isEmpty()) {
                         callback(Status.Failure(e.message))
                     } else {
-                        if (converter != null) {
-                            val convertedResult: T =
-                                converter.convert(cacheValue, type)
-                            callback(Status.Success(convertedResult, true))
-                        } else {
-                            //todo
-//                    val convertedResult: T =
-//                        NetraGsonConverter().convert(response.body.bytes(), type)
-                            callback(Status.Success(cacheValue, true))
-                        }
+                        val response = handleConvertedResponse(cacheValue)
+                        callback(Status.Success(response, true))
                     }
                 } else {
                     callback(Status.Failure(e.message))
@@ -162,16 +165,8 @@ class NetraCall<T>(
                         if (cacheValue == null || cacheValue.isEmpty()) {
                             callback(Status.Failure(e.message))
                         } else {
-                            if (converter != null) {
-                                val convertedResult: T =
-                                    converter.convert(cacheValue, type)
-                                callback(Status.Success(convertedResult, true))
-                            } else {
-                                //todo
-//                    val convertedResult: T =
-//                        NetraGsonConverter().convert(response.body.bytes(), type)
-                                callback(Status.Success(cacheValue, true))
-                            }
+                            val response = handleConvertedResponse(cacheValue)
+                            callback(Status.Success(response, true))
                         }
                     } else {
                         callback(Status.Failure(e.message))
@@ -208,21 +203,8 @@ class NetraCall<T>(
                         .body(newBody)
                         .build()
 
-                    if (converter != null) {
-                        val convertedResult: T =
-                            converter.convert(newResponse.body!!.bytes(), type)
-                        callback(Status.Success(convertedResult, false))
-                    } else {
-                        if (type == ByteArray::class.java) {
-                            @Suppress("UNCHECKED_CAST")
-                            callback(Status.Success(bytes as T, false))
-                        } else {
-                            // Fallback for default JSON parsing
-
-                            //callback(Status.Success( NetraGsonConverter().convert(bytes, type), false))
-                        }
-
-                    }
+                    val convertedResponse = handleConvertedResponse(newResponse.body!!.bytes())
+                    callback(Status.Success(convertedResponse, false))
                 }
             } catch (e: Error) {
                 callback(Status.Error(response.code, "Parsing Error: ${e.message}"))
@@ -325,16 +307,8 @@ class NetraCall<T>(
                     if (cacheValue == null || cacheValue.isEmpty()) {
                         callback(Status.Failure(null))
                     } else {
-                        if (converter != null) {
-                            val convertedResult: T =
-                                converter.convert(cacheValue, type)
-                            callback(Status.Success(convertedResult, true))
-                        } else {
-                            //todo
-//                    val convertedResult: T =
-//                        NetraGsonConverter().convert(response.body.bytes(), type)
-                            callback(Status.Success(cacheValue, true))
-                        }
+                        val response = handleConvertedResponse(cacheValue)
+                        callback(Status.Success(response, true))
                     }
                 } else {
                     callback(Status.Failure(null))
@@ -387,16 +361,4 @@ class NetraCall<T>(
             }
         }
     }
-
-    //todo
-//    fun execute(): T {
-//        val response = client.newCall(request).execute()
-//        if (converter != null) {
-//            val convertedResult: T = converter.convert(response.body.bytes(), type)
-//            return convertedResult
-//        } else {
-//            val convertedResult: T = NetraGsonConverter().convert(response.body.bytes(), type)
-//            return convertedResult
-//        }
-//    }
 }

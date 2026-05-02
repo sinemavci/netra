@@ -27,6 +27,8 @@ import com.netra.library.OfflinePolicyAction
 import com.netra.library.SlowNetworkPolicyAction
 import com.netra.library.Status
 import com.netra.library.converter.NetraGsonConverter
+import com.netra.library.converter.NetraKotlinxConverter
+import com.netra.library.converter.NetraMoshiConverter
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -89,6 +91,7 @@ class MainActivity : ComponentActivity() {
         client.get("/image")
             .asObject<ByteArray>()
             .withCache(Cache(null))
+            .whenOffline(OfflinePolicyAction.USE_CACHE)
             .enqueue { result ->
                 if (result is Status.Success<*>) {
                     Log.e("here", "here: ${result.response?.javaClass}")
@@ -122,7 +125,7 @@ class MainActivity : ComponentActivity() {
             .baseUrl("http://10.0.2.2:3001")
 //            .baseUrl("https://jsonplaceholder.typicode.com")
             .addConverterFactory(
-                NetraGsonConverter()
+                NetraKotlinxConverter()
             )
             .build()
         val json = """
@@ -164,7 +167,7 @@ class MainActivity : ComponentActivity() {
             //.baseUrl("http://10.0.2.2:3001")
             .baseUrl("https://jsonplaceholder.typicode.com")
             .addConverterFactory(
-                NetraGsonConverter()
+                NetraKotlinxConverter()
             )
             .build()
         val json = """
@@ -191,7 +194,7 @@ class MainActivity : ComponentActivity() {
             //.baseUrl("http://10.0.2.2:3001")
             .baseUrl("https://jsonplaceholder.typicode.com")
             .addConverterFactory(
-                NetraGsonConverter()
+                NetraKotlinxConverter()
             )
             .build()
         val json = """
@@ -218,7 +221,7 @@ class MainActivity : ComponentActivity() {
             //.baseUrl("http://10.0.2.2:3001")
             .baseUrl("https://jsonplaceholder.typicode.com")
             .addConverterFactory(
-                NetraGsonConverter()
+                NetraKotlinxConverter()
             )
             .build()
         val json = """
@@ -249,7 +252,7 @@ class MainActivity : ComponentActivity() {
             //.baseUrl("http://10.0.2.2:3001")
             .baseUrl("https://jsonplaceholder.typicode.com")
             .addConverterFactory(
-                NetraGsonConverter()
+                NetraKotlinxConverter()
             )
             .build()
         //client.get("/?status=200")
