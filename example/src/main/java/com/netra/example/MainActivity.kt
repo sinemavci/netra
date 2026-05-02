@@ -132,13 +132,13 @@ class MainActivity : ComponentActivity() {
                                     }
                                     """.trimIndent()
         val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
-        val request = client.get("/?status=200&delay=8000")
+        val request = client.get("/?status=200&delay=1000")
             // client.get("/users")
             .slowMode()
             .addHeader("headercustom", "custom")
             .asObject<Any>()
             .withCache(Cache(null))
-            .whenOffline(OfflinePolicyAction.QUEUE)
+            .whenOffline(OfflinePolicyAction.RETRY(4))
             .whenSlowNetwork(SlowNetworkPolicyAction.TIMEOUT(timeout = 3))
 
         request.enqueue { result ->

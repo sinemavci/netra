@@ -1,0 +1,27 @@
+package com.netra.library
+
+import okhttp3.Interceptor
+import okhttp3.Response
+import okio.IOException
+
+class RetryInterceptor(private val maxRetries: Int) : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        var attempt = 0
+        val request = chain.request()
+        var lastException: IOException? = null
+        val reporter = request.tag(StatusReporter::class.java)
+
+        while (attempt < maxRetries) {
+            try {
+                val response = chain.proceed(chain.request())
+                reporter?.onStatusUpdate(Status.Retrying(response.code, attempt))
+                return response
+            } catch (e: IOException) {
+                lastException = e
+                attempt++
+                Thread.sleep(4000L * attempt)
+            }
+        }
+        throw lastException!!
+    }
+}

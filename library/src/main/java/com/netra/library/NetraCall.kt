@@ -32,6 +32,8 @@ class NetraCall<T>(
     private var offlinePolicyAction: OfflinePolicyAction? = null
     private var slowNetworkPolicyAction: SlowNetworkPolicyAction? = null
 
+    private var retriesCount: Int? = null
+
     @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
     private fun isConnected(): Boolean {
         val network = NetraClient.connectivityManager.activeNetwork ?: return false
@@ -51,6 +53,9 @@ class NetraCall<T>(
 
     fun whenOffline(action: OfflinePolicyAction): NetraCall<T> {
         offlinePolicyAction = action
+        if (offlinePolicyAction is OfflinePolicyAction.RETRY) {
+            retriesCount = (offlinePolicyAction as OfflinePolicyAction.RETRY).retries
+        }
         return this
     }
 
@@ -121,16 +126,14 @@ class NetraCall<T>(
                     callback(Status.Failure(e.message))
                 }
             } else {
-                when (offlinePolicyAction) {
-                    OfflinePolicyAction.QUEUE -> {
-                        OfflineQueueManager.push(call.request())
-                    }
-
-                    OfflinePolicyAction.RETRY -> {
-                        //todo: retry flag
-                        val call = client.newCall(call.request())
-                        CancelableStore.add(command.url, call)
-
+                if (offlinePolicyAction is OfflinePolicyAction.QUEUE) {
+                    OfflineQueueManager.push(call.request())
+                } else if (offlinePolicyAction is OfflinePolicyAction.RETRY) {
+                    retriesCount?.let {
+                        val retryClient = OkHttpClient.Builder()
+                            .addInterceptor(RetryInterceptor(maxRetries = retriesCount!!))
+                            .build()
+                        val call = retryClient.newCall(call.request())
                         call.enqueue(object : Callback {
                             override fun onFailure(call: Call, e: IOException) {
                                 handleOnFailure(call, e, callback)
@@ -141,47 +144,42 @@ class NetraCall<T>(
                             }
                         })
                     }
+                    retriesCount = null
+                } else if (offlinePolicyAction is OfflinePolicyAction.USE_CACHE) {
+                    val cacheDirectory = context.cacheDir
+                    val cacheFile =
+                        File("${cacheDirectory}/${getCacheKey(command)}")
+                    val cacheValue: ByteArray? = if (cacheFile.exists()) {
+                        cacheFile.readBytes()
+                    } else {
+                        null
+                    }
+                    if (_cache == null) {
+                        callback(Status.Failure(e.message))
+                    } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
+                        //val cacheValue = NetraClient.kt.memoryCache.get(baseUrl + path)
 
-                    OfflinePolicyAction.USE_CACHE -> {
-                        val cacheDirectory = context.cacheDir
-                        val cacheFile =
-                            File("${cacheDirectory}/${getCacheKey(command)}")
-                        val cacheValue: ByteArray? = if (cacheFile.exists()) {
-                            cacheFile.readBytes()
+                        if (cacheValue == null || cacheValue.isEmpty()) {
+                            callback(Status.Failure(e.message))
                         } else {
-                            null
-                        }
-                        if (_cache == null) {
-                            callback(Status.Failure(e?.message))
-                        } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
-                            //val cacheValue = NetraClient.kt.memoryCache.get(baseUrl + path)
-
-                            if (cacheValue == null || cacheValue.isEmpty()) {
-                                callback(Status.Failure(e?.message))
+                            if (converter != null) {
+                                val convertedResult: T =
+                                    converter.convert(cacheValue, type)
+                                callback(Status.Success(convertedResult, true))
                             } else {
-                                if (converter != null) {
-                                    val convertedResult: T =
-                                        converter.convert(cacheValue, type)
-                                    callback(Status.Success(convertedResult, true))
-                                } else {
-                                    //todo
+                                //todo
 //                    val convertedResult: T =
 //                        NetraGsonConverter().convert(response.body.bytes(), type)
-                                    callback(Status.Success(cacheValue, true))
-                                }
+                                callback(Status.Success(cacheValue, true))
                             }
-                        } else {
-                            callback(Status.Failure(e?.message))
                         }
-                    }
-
-                    OfflinePolicyAction.THROW_ERROR -> {
+                    } else {
                         callback(Status.Failure(e.message))
                     }
-
-                    else -> {
-                        callback(Status.Failure("Network Error"))
-                    }
+                } else if (offlinePolicyAction is OfflinePolicyAction.THROW_ERROR) {
+                    callback(Status.Failure(e.message))
+                } else {
+                    callback(Status.Failure("Network Error"))
                 }
             }
         }

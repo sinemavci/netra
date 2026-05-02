@@ -1,8 +1,8 @@
 package com.netra.library
 
-enum class OfflinePolicyAction {
-    QUEUE,
-    USE_CACHE,
-    RETRY, //todo: may be add retry count
-    THROW_ERROR
+sealed class OfflinePolicyAction {
+    object QUEUE : OfflinePolicyAction()
+    object USE_CACHE : OfflinePolicyAction()
+    data class RETRY(val retries: Int) : OfflinePolicyAction()
+    object THROW_ERROR : OfflinePolicyAction()
 }
