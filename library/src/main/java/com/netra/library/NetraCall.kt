@@ -8,7 +8,14 @@ import android.os.Looper
 import android.util.Log
 import androidx.annotation.RequiresPermission
 import com.netra.library.converter.IConverter
+import com.netra.library.enums.Command
+import com.netra.library.enums.NetworkSeverity
+import com.netra.library.enums.OfflinePolicyAction
+import com.netra.library.enums.SlowNetworkPolicyAction
+import com.netra.library.enums.Status
 import com.netra.library.interceptors.RetryInterceptor
+import com.netra.library.managers.CancelRequestManager
+import com.netra.library.managers.OfflineQueueManager
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.OkHttpClient
@@ -62,7 +69,7 @@ class NetraCall<T>(
 
     fun cancel() {
         try {
-            CancelableStore.cancel(command.url)
+            CancelRequestManager.cancel(command.url)
         } catch (e: Exception) {
             throw e
         }
@@ -105,7 +112,7 @@ class NetraCall<T>(
     }
 
     private fun handleOnFailure(call: Call, e: IOException, callback: (Status?) -> Unit) {
-        CancelableStore.remove(command.url)
+        CancelRequestManager.remove(command.url)
         if (!call.isCanceled()) {
             if (isConnected()) {
                 val cacheDirectory = context.cacheDir
@@ -182,7 +189,7 @@ class NetraCall<T>(
     }
 
     private fun handleOnResponse(response: Response, callback: (Status?) -> Unit) {
-        CancelableStore.remove(command.url)
+        CancelRequestManager.remove(command.url)
         if (response.isSuccessful) {
             try {
                 val originalBody = response.body
@@ -279,7 +286,7 @@ class NetraCall<T>(
         val networkSeverity = getNetworkSpeedState()
         if (networkSeverity == NetworkSeverity.NORMAL) {
             val call = client.newCall(request)
-            CancelableStore.add(command.url, call)
+            CancelRequestManager.add(command.url, call)
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
                     handleOnFailure(call, e, callback)
@@ -333,7 +340,7 @@ class NetraCall<T>(
             } else if (slowNetworkPolicyAction is SlowNetworkPolicyAction.WAIT) {
                 Handler(Looper.getMainLooper()).postDelayed({
                     val call = client.newCall(request)
-                    CancelableStore.add(command.url, call)
+                    CancelRequestManager.add(command.url, call)
                     call.enqueue(object : Callback {
                         override fun onFailure(call: Call, e: IOException) {
                             handleOnFailure(call, e, callback)
@@ -347,7 +354,7 @@ class NetraCall<T>(
                 return
             } else {
                 val call = client.newCall(request)
-                CancelableStore.add(command.url, call)
+                CancelRequestManager.add(command.url, call)
                 call.enqueue(object : Callback {
                     override fun onFailure(call: Call, e: IOException) {
                         handleOnFailure(call, e, callback)

@@ -1,4 +1,4 @@
-package com.netra.library
+package com.netra.library.enums
 
 enum class NetworkSeverity {
     NORMAL, // < 500ms

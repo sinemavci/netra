@@ -1,9 +1,9 @@
-package com.netra.library
+package com.netra.library.managers
 
 import okhttp3.Call
 import java.util.concurrent.ConcurrentHashMap
 
-object CancelableStore {
+object CancelRequestManager {
     private val activeCalls = ConcurrentHashMap<String, Call>()
 
     fun getSources(): List<Call> {

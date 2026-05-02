@@ -1,4 +1,4 @@
-package com.netra.library
+package com.netra.library.enums
 
 sealed class OfflinePolicyAction {
     object QUEUE : OfflinePolicyAction()

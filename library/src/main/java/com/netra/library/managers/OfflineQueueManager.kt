@@ -1,8 +1,9 @@
-package com.netra.library
+package com.netra.library.managers
 
 import android.content.Context
 import android.util.Log
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.netra.library.database.NetraDatabase
 import com.netra.library.database.PersistentRequest
 import com.netra.library.database.QueueDao
@@ -10,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import okhttp3.Headers
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -21,7 +23,7 @@ object OfflineQueueManager {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     fun init(context: Context) {
-        dao = NetraDatabase.getDatabase(context).queueDao()
+        dao = NetraDatabase.Companion.getDatabase(context).queueDao()
     }
 
     fun push(request: Request) {
@@ -56,10 +58,10 @@ object OfflineQueueManager {
             dao.getAllRequests().forEach { savedReq ->
                 val headerMap: Map<String, List<String>> = gson.fromJson(
                     savedReq.headersJson,
-                    object : com.google.gson.reflect.TypeToken<Map<String, List<String>>>() {}.type
+                    object : TypeToken<Map<String, List<String>>>() {}.type
                 )
 
-                val headerBuilder = okhttp3.Headers.Builder()
+                val headerBuilder = Headers.Builder()
                 headerMap.forEach { (key, values) ->
                     values.forEach { value -> headerBuilder.add(key, value) }
                 }

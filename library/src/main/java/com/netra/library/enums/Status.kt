@@ -1,4 +1,4 @@
-package com.netra.library
+package com.netra.library.enums
 
 sealed class Status {
     data class Retrying(val code: Int, val attempt: Int) : Status()

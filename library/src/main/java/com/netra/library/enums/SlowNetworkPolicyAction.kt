@@ -1,5 +1,4 @@
-package com.netra.library
-
+package com.netra.library.enums
 
 sealed class SlowNetworkPolicyAction {
     data class WAIT(val delay: Long) : SlowNetworkPolicyAction()

@@ -1,7 +1,7 @@
 package com.netra.library.interceptors
 
 import com.netra.library.NetraClient
-import com.netra.library.Status
+import com.netra.library.enums.Status
 import com.netra.library.StatusReporter
 import okhttp3.Interceptor
 import okhttp3.Response

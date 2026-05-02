@@ -23,9 +23,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import com.netra.example.ui.theme.NetraTheme
 import com.netra.library.Cache
 import com.netra.library.NetraClient
-import com.netra.library.OfflinePolicyAction
-import com.netra.library.SlowNetworkPolicyAction
-import com.netra.library.Status
+import com.netra.library.enums.OfflinePolicyAction
+import com.netra.library.enums.SlowNetworkPolicyAction
+import com.netra.library.enums.Status
 import com.netra.library.converter.NetraGsonConverter
 import com.netra.library.converter.NetraKotlinxConverter
 import com.netra.library.converter.NetraMoshiConverter

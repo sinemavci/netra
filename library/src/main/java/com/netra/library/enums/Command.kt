@@ -1,4 +1,4 @@
-package com.netra.library
+package com.netra.library.enums
 
 import okhttp3.RequestBody
 

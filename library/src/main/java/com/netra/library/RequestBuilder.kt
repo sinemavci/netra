@@ -3,6 +3,7 @@ package com.netra.library
 import android.content.Context
 import com.google.gson.reflect.TypeToken
 import com.netra.library.converter.IConverter
+import com.netra.library.enums.Command
 import okhttp3.OkHttpClient
 
 class RequestBuilder(val context: Context, val command: Command, val client: OkHttpClient, val converter: IConverter?) {
