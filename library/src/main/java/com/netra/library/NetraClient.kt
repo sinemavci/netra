@@ -13,6 +13,7 @@ import com.netra.library.interceptors.NetraInterceptor
 import com.netra.library.managers.OfflineQueueManager
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
 val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
@@ -22,6 +23,7 @@ class NetraClient private constructor(
     var baseUrl: String? = null,
     var converter: IConverter? = null,
 ) {
+    var id: String = UUID.randomUUID().mostSignificantBits.toString()
     data class Builder(
         val context: Context,
         var baseUrl: String? = null,
