@@ -4,6 +4,9 @@ import com.squareup.moshi.Moshi
 import java.lang.reflect.Type
 
 class NetraMoshiConverter: IConverter {
+    override val type: String
+        get() = "MOSHI"
+
     override fun <T> convert(bytes: ByteArray, type: Type): T {
         val moshi = Moshi.Builder().build()
         val adapter = moshi.adapter<T>(type)

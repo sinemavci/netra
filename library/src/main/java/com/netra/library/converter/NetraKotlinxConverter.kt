@@ -6,6 +6,8 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import java.lang.reflect.Type
 
 class NetraKotlinxConverter : IConverter {
+    override val type: String
+        get() = "KOTLINX"
     private val json = Json { ignoreUnknownKeys = true }
 
     override fun <T> convert(bytes: ByteArray, type: Type): T {
