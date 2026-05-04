@@ -63,6 +63,8 @@ class NetraCall<T>(
         offlinePolicyAction = action
         if (offlinePolicyAction is OfflinePolicyAction.RETRY) {
             retriesCount = (offlinePolicyAction as OfflinePolicyAction.RETRY).retries
+        } else if (offlinePolicyAction is OfflinePolicyAction.USE_CACHE) {
+            _cache = Cache(null)
         }
         return this
     }
@@ -138,8 +140,10 @@ class NetraCall<T>(
                 }
             } else {
                 if (offlinePolicyAction is OfflinePolicyAction.QUEUE) {
+                    Log.e("", "sdk uses OfflinePolicyAction.QUEUE")
                     OfflineQueueManager.push(call.request())
                 } else if (offlinePolicyAction is OfflinePolicyAction.RETRY) {
+                    Log.e("", "sdk uses OfflinePolicyAction.RETRY: ${retriesCount}")
                     retriesCount?.let {
                         val retryClient = OkHttpClient.Builder()
                             .addInterceptor(RetryInterceptor(maxRetries = retriesCount!!))
@@ -165,12 +169,12 @@ class NetraCall<T>(
                     } else {
                         null
                     }
-                    if (_cache == null) {
+                    if (cacheValue == null) {
                         callback(Status.Failure(e.message))
                     } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
                         //val cacheValue = NetraClient.kt.memoryCache.get(baseUrl + path)
 
-                        if (cacheValue == null || cacheValue.isEmpty()) {
+                        if (cacheValue.isEmpty()) {
                             callback(Status.Failure(e.message))
                         } else {
                             val response = handleConvertedResponse(cacheValue)
