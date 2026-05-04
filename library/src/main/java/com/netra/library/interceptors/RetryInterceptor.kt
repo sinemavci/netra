@@ -19,6 +19,7 @@ class RetryInterceptor(private val maxRetries: Int) : Interceptor {
                 reporter?.onStatusUpdate(Status.Retrying(response.code, attempt))
                 return response
             } catch (e: IOException) {
+                reporter?.onStatusUpdate(Status.Failure(e.message))
                 lastException = e
                 attempt++
                 Thread.sleep(2000L * attempt)
