@@ -235,13 +235,14 @@ class NetraCall<T>(
                 val bodyBytes = response.body?.bytes()
                 bodyBytes?.let {
                     writeCacheResponse(it)
+                    _response = NetraResponse(
+                        data = mapOf("data" to handleConvertedResponse(it)),
+                        statusCode = response.code,
+                        statusMessage = response.message,
+                        isCache = false,
+                    )
                 }
-                _response = NetraResponse(
-                    data = mapOf("data" to bodyBytes),
-                    statusCode = response.code,
-                    statusMessage = response.message,
-                    isCache = false,
-                )
+
             } catch (e: IOException) {
                 _response = getNetraFailedResponse(e)
             } finally {
