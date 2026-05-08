@@ -20,7 +20,6 @@ import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
-import okhttp3.ResponseBody.Companion.toResponseBody
 import java.io.File
 import java.io.IOException
 import java.lang.reflect.Type
@@ -30,7 +29,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-
 
 class NetraCall<T>(
     val context: Context,
@@ -409,7 +407,7 @@ class NetraCall<T>(
     fun enqueue(callback: (NetraResponse?) -> Unit) {
         val reporter = StatusReporter(callback)
         val request = getRequest(reporter)
-        val networkSeverity = NetworkSeverity.DEGRADED
+        val networkSeverity = getNetworkSpeedState()
 
         if (isConnected()) {
             if (networkSeverity == NetworkSeverity.NORMAL) {
@@ -431,7 +429,6 @@ class NetraCall<T>(
                             .build()
                         val shortCall = shortClient.newCall(request)
                         enqueueCommand(shortCall, callback)
-
                         return
                     }
 
@@ -496,7 +493,7 @@ class NetraCall<T>(
     companion object {
         internal fun getNetraFailedResponse(e: Exception?): NetraResponse {
             val (code, message) = when (e) {
-                is java.net.ConnectException -> 503 to "Service Unavailable: ${e.message}"
+                is ConnectException -> 503 to "Service Unavailable: ${e.message}"
                 is java.net.SocketTimeoutException -> 408 to "Request Timeout: ${e.message}"
                 is java.net.UnknownHostException -> 502 to "Bad Gateway / DNS failure: ${e.message}"
                 is javax.net.ssl.SSLException -> 495 to "SSL Error: ${e.message}"
