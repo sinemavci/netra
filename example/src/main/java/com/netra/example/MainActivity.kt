@@ -25,10 +25,10 @@ import com.netra.library.Cache
 import com.netra.library.NetraClient
 import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
-import com.netra.library.enums.Status
-import com.netra.library.converter.NetraGsonConverter
 import com.netra.library.converter.NetraKotlinxConverter
-import com.netra.library.converter.NetraMoshiConverter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -76,10 +76,7 @@ class MainActivity : ComponentActivity() {
                     .whenOffline(OfflinePolicyAction.THROW_ERROR)
                     .whenSlowNetwork(SlowNetworkPolicyAction.USE_CACHE)
                     .enqueue { result ->
-                        Log.e("result", result.toString())
-                        if (result is Status.Success<*>) {
-                            Log.e("result is success", result.response.toString())
-                        }
+                        Log.e("result", result?.statusCode.toString() )
                     }
             }
         }
@@ -93,16 +90,7 @@ class MainActivity : ComponentActivity() {
             .withCache(Cache(null))
             .whenOffline(OfflinePolicyAction.USE_CACHE)
             .enqueue { result ->
-                if (result is Status.Success<*>) {
-                    Log.e("here", "here: ${result.response?.javaClass}")
-                    _bitmap.value = BitmapFactory.decodeByteArray(result.response as ByteArray, 0, (result.response as ByteArray).size)
-                } else if (result is Status.Retrying) {
-                    Log.e("result is Retrying", result.code.toString())
-                } else if (result is Status.Error) {
-                    Log.e("result is Error", result.code.toString())
-                } else {
-                    Log.e("result is Failure", (result as Status.Failure).message.toString())
-                }
+                Log.e("result", result?.statusCode.toString() )
             }
     }
 
@@ -128,38 +116,28 @@ class MainActivity : ComponentActivity() {
                 NetraKotlinxConverter()
             )
             .build()
-        val json = """
-                                    {
-                                    "name": "Sinem",
-                                    "job": "developer"
-                                    }
-                                    """.trimIndent()
-        val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
-        val request = client.get("/?status=200&delay=1000")
-            // client.get("/users")
+        val request = client.get("/?status=200&delay=2000")
             .slowMode()
             .addHeader("headercustom", "custom")
             .asObject<Any>()
             .withCache(Cache(null))
-            .whenOffline(OfflinePolicyAction.RETRY(4))
-            .whenSlowNetwork(SlowNetworkPolicyAction.TIMEOUT(timeout = 3))
+            .whenOffline(OfflinePolicyAction.RETRY(5))
+//            .whenSlowNetwork(SlowNetworkPolicyAction.USE_CACHE)
+
+        CoroutineScope(Dispatchers.IO).launch {
+
+//            val response = request.execute()
+//            Log.e("", "netra response: ${response.statusCode} ${response.data}")
 
         request.enqueue { result ->
-            if (result is Status.Success<*>) {
-                Log.e("result is success", result.response.toString())
-            } else if (result is Status.Retrying) {
-                Log.e("result is Retrying", result.code.toString())
-            } else if (result is Status.Error) {
-                Log.e("result is Error", result.code.toString())
-            } else {
-                Log.e("result is Failure", (result as Status.Failure).message.toString())
-            }
+                Log.e("result is success", "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}")
         }
-
+//
+        }
 //        Handler(Looper.getMainLooper()).postDelayed({
 //            Log.e("", "cancelled")
 //            request.cancel()
-//        }, (1000))
+//        }, (2000))
     }
 
     fun handlePost() {
@@ -182,10 +160,7 @@ class MainActivity : ComponentActivity() {
             .asObject<Any>()
             .withCache(Cache(null))
             .enqueue { result ->
-                Log.e("result", result.toString())
-                if (result is Status.Success<*>) {
-                    Log.e("result is success", result.response.toString())
-                }
+                Log.e("result", result?.statusCode.toString() )
             }
     }
 
@@ -209,10 +184,7 @@ class MainActivity : ComponentActivity() {
             .asObject<Any>()
             .withCache(Cache(null))
             .enqueue { result ->
-                Log.e("result", result.toString())
-                if (result is Status.Success<*>) {
-                    Log.e("result is success", result.response.toString())
-                }
+                Log.e("result", result?.statusCode.toString() )
             }
     }
 
@@ -235,15 +207,7 @@ class MainActivity : ComponentActivity() {
             .asObject<Any>()
             .withCache(Cache(null))
             .enqueue { result ->
-                if (result is Status.Success<*>) {
-                    Log.e("result is success", result.response.toString())
-                } else if (result is Status.Retrying) {
-                    Log.e("result is Retrying", result.code.toString())
-                } else if (result is Status.Error) {
-                    Log.e("result is Error", result.code.toString())
-                }else {
-                    Log.e("result is Failure", (result as Status.Failure).message.toString())
-                }
+                Log.e("result", result?.statusCode.toString() )
             }
     }
 
@@ -260,10 +224,7 @@ class MainActivity : ComponentActivity() {
             .asObject<Any>()
             .withCache(Cache(null))
             .enqueue { result ->
-                Log.e("result", result.toString())
-                if (result is Status.Success<*>) {
-                    Log.e("result is success", result.response.toString())
-                }
+                Log.e("result", result?.statusCode.toString() )
             }
     }
 

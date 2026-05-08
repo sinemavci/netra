@@ -8,7 +8,6 @@ import android.net.NetworkRequest
 import androidx.collection.LruCache
 import com.netra.library.converter.IConverter
 import com.netra.library.enums.Command
-import com.netra.library.enums.Status
 import com.netra.library.interceptors.NetraInterceptor
 import com.netra.library.managers.OfflineQueueManager
 import okhttp3.OkHttpClient
@@ -126,5 +125,5 @@ class NetraClient private constructor(
     }
 }
 
-class StatusReporter(val onStatusUpdate: (Status) -> Unit)
+class StatusReporter(val onStatusUpdate: (NetraResponse) -> Unit)
 

@@ -1,7 +1,7 @@
 package com.netra.library.interceptors
 
+import android.util.Log
 import com.netra.library.NetraClient
-import com.netra.library.enums.Status
 import com.netra.library.StatusReporter
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -39,6 +39,7 @@ class NetraInterceptor : Interceptor {
 
         var attempt = 1
         var response: Response = currentChain.proceed(request)
+        Log.e("response", "response in interceptor: ${response.code}")
 
         while (!response.isSuccessful && shouldRetry(response) && attempt < maxRetries && !chain.call().isCanceled()) {
 
@@ -46,7 +47,7 @@ class NetraInterceptor : Interceptor {
             response.close()
 
             attempt++
-            reporter?.onStatusUpdate(Status.Retrying(response.code, attempt))
+            //reporter?.onStatusUpdate(Status.Retrying(response.code, attempt))
 
             Thread.sleep(1000 * attempt.toLong())
             response = currentChain.proceed(request)
