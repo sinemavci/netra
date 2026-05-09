@@ -178,7 +178,7 @@ class MainActivity : ComponentActivity() {
                                     "job": "not developer"
                                     }
                                     """.trimIndent()
-        val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
+        val body = NetraRequestBody.create(json)
         //client.get("/?status=200")
         client.put("/users/1", body)
             .asObject<Any>()
@@ -190,7 +190,6 @@ class MainActivity : ComponentActivity() {
 
     fun handlePatch() {
         val client = NetraClient.Builder(applicationContext)
-            //.baseUrl("http://10.0.2.2:3001")
             .baseUrl("https://jsonplaceholder.typicode.com")
             .addConverterFactory(
                 NetraKotlinxConverter()
@@ -201,7 +200,7 @@ class MainActivity : ComponentActivity() {
                                     "name": "Selin",
                                     }
                                     """.trimIndent()
-        val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
+        val body = NetraRequestBody.create(json)
         //client.get("/?status=200")
         client.patch("/users/1", body)
             .asObject<Any>()
@@ -213,7 +212,6 @@ class MainActivity : ComponentActivity() {
 
     fun handleDelete() {
         val client = NetraClient.Builder(applicationContext)
-            //.baseUrl("http://10.0.2.2:3001")
             .baseUrl("https://jsonplaceholder.typicode.com")
             .addConverterFactory(
                 NetraKotlinxConverter()

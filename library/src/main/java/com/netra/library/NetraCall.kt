@@ -166,7 +166,7 @@ class NetraCall<T>(
                     jsonString.toRequestBody(mediaType)
                 }
 
-                else -> "".toRequestBody(mediaType)
+                else -> "".toRequestBody(null)
             }
         } else {
             Log.e("", "multipart hereee")
@@ -220,7 +220,7 @@ class NetraCall<T>(
             is Command.Put -> {
                 val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
                     .url(command.url)
-                    .put(command.body)
+                    .put(getRequestBody(command.body))
 
                 header?.forEach { (key, value) ->
                     requestBuilder.addHeader(key, value)
@@ -231,7 +231,7 @@ class NetraCall<T>(
             is Command.Patch -> {
                 val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
                     .url(command.url)
-                    .patch(command.body)
+                    .patch(getRequestBody(command.body))
 
                 header?.forEach { (key, value) ->
                     requestBuilder.addHeader(key, value)
@@ -242,7 +242,7 @@ class NetraCall<T>(
             is Command.Delete -> {
                 val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
                     .url(command.url)
-                    .delete(command.body)
+                    .delete(getRequestBody(command.body ?: NetraRequestBody.EMPTY))
 
                 header?.forEach { (key, value) ->
                     requestBuilder.addHeader(key, value)

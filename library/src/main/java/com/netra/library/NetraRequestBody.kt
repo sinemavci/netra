@@ -21,5 +21,7 @@ class NetraRequestBody private constructor(
         fun multipart(parts: List<NetraPart>): NetraRequestBody {
             return NetraRequestBody(parts, "multipart/form-data", true)
         }
+
+        val EMPTY = NetraRequestBody("")
     }
 }

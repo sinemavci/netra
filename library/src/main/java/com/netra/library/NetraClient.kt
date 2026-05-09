@@ -11,7 +11,6 @@ import com.netra.library.enums.Command
 import com.netra.library.interceptors.NetraInterceptor
 import com.netra.library.managers.OfflineQueueManager
 import okhttp3.OkHttpClient
-import okhttp3.RequestBody
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -57,11 +56,11 @@ class NetraClient private constructor(
         return RequestBuilder(context, Command.Post(baseUrl + path, requestBody), client, converter)
     }
 
-    fun put(path: String, requestBody: RequestBody): RequestBuilder {
+    fun put(path: String, requestBody: NetraRequestBody): RequestBuilder {
         return RequestBuilder(context, Command.Put(baseUrl + path, requestBody), client, converter)
     }
 
-    fun patch(path: String, requestBody: RequestBody): RequestBuilder {
+    fun patch(path: String, requestBody: NetraRequestBody): RequestBuilder {
         return RequestBuilder(
             context,
             Command.Patch(baseUrl + path, requestBody),
@@ -70,7 +69,7 @@ class NetraClient private constructor(
         )
     }
 
-    fun delete(path: String, requestBody: RequestBody? = null): RequestBuilder {
+    fun delete(path: String, requestBody: NetraRequestBody? = null): RequestBuilder {
         return RequestBuilder(
             context,
             Command.Delete(baseUrl + path, requestBody),
