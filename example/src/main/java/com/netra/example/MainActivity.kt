@@ -1,11 +1,8 @@
 package com.netra.example
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,6 +20,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import com.netra.example.ui.theme.NetraTheme
 import com.netra.library.Cache
 import com.netra.library.NetraClient
+import com.netra.library.NetraPart
+import com.netra.library.NetraRequestBody
 import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
 import com.netra.library.converter.NetraKotlinxConverter
@@ -58,19 +57,15 @@ class MainActivity : ComponentActivity() {
         uri?.let {
             val byteArray = uriToByteArray(it)
             if(byteArray != null) {
-                val requestBody = MultipartBody.Builder()
-                    .setType(MultipartBody.FORM)
-                    .addFormDataPart(
-                        "image",
-                        "exampleImage",
-                        byteArray.toRequestBody("image/jpeg".toMediaType())
-                    )
-                    .build()
+                val netraPart = NetraPart.file("image", "exampleImage", byteArray, "image/jpeg")
+                val body = NetraRequestBody.multipart(listOf(
+                    netraPart
+                ))
 
                 val client = NetraClient.Builder(applicationContext)
                     .baseUrl("http://10.0.2.2:3001")
                     .build()
-                client.post("/upload", requestBody)
+                client.post("/upload", body)
                     .asObject<Any>()
                     .withCache(Cache(null))
                     .whenOffline(OfflinePolicyAction.THROW_ERROR)
@@ -122,12 +117,12 @@ class MainActivity : ComponentActivity() {
             .asObject<Any>()
             .withCache(Cache(null))
             .whenOffline(OfflinePolicyAction.RETRY(5))
-//            .whenSlowNetwork(SlowNetworkPolicyAction.USE_CACHE)
+            .whenSlowNetwork(SlowNetworkPolicyAction.USE_CACHE)
 
         CoroutineScope(Dispatchers.IO).launch {
 
-//            val response = request.execute()
-//            Log.e("", "netra response: ${response.statusCode} ${response.data}")
+            val response = request.execute()
+            Log.e("", "netra response: ${response.statusCode} ${response.data}")
 
         request.enqueue { result ->
                 Log.e("result is success", "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}")
@@ -154,14 +149,19 @@ class MainActivity : ComponentActivity() {
                                     "job": "developer"
                                     }
                                     """.trimIndent()
-        val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
-        //client.get("/?status=200")
-        client.post("/users", body)
+//        val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
+        val body = NetraRequestBody.create(json)
+        val call = client.post("/users", body)
             .asObject<Any>()
             .withCache(Cache(null))
-            .enqueue { result ->
-                Log.e("result", result?.statusCode.toString() )
-            }
+        val response = call.execute()
+        Log.e(
+            "response in main kt",
+            "${response.statusCode} ${response.data} message: ${response.statusMessage} "
+        )
+//            .enqueue { result ->
+//                Log.e("result", "${result?.statusCode} ${result?.data} message: ${result?.statusMessage} " )
+//            }
     }
 
     fun handlePut() {
@@ -298,7 +298,7 @@ class MainActivity : ComponentActivity() {
                             }
                         ) {
                             Text(
-                                text = "get image",
+                                text = "post image",
                             )
                         }
 

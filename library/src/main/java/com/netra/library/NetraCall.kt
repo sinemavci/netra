@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.annotation.RequiresPermission
+import com.google.gson.Gson
 import com.netra.library.converter.IConverter
 import com.netra.library.enums.Command
 import com.netra.library.enums.NetworkSeverity
@@ -17,8 +18,11 @@ import com.netra.library.managers.CancelRequestManager
 import com.netra.library.managers.OfflineQueueManager
 import okhttp3.Call
 import okhttp3.Callback
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.File
 import java.io.IOException
@@ -150,59 +154,101 @@ class NetraCall<T>(
         }
     }
 
-    private fun getRequest(reporter: StatusReporter?) = when (command) {
-        is Command.Get -> {
-            val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
-                .url(command.url).get()
+    private fun getRequestBody(netraRequestBody: NetraRequestBody): RequestBody {
+        val mediaType = netraRequestBody.contentType.toMediaTypeOrNull()
+        if (!netraRequestBody.isMultipart) {
+            Log.e("", "multipart not heree")
+            return when (val content = netraRequestBody.content) {
+                is String -> content.toRequestBody(mediaType)
+                is ByteArray -> content.toRequestBody(mediaType)
+                is Map<*, *> -> {
+                    val jsonString = Gson().toJson(content)
+                    jsonString.toRequestBody(mediaType)
+                }
 
-            header?.forEach { (key, value) ->
-                requestBuilder.addHeader(key, value)
+                else -> "".toRequestBody(mediaType)
             }
-            requestBuilder.build()
+        } else {
+            Log.e("", "multipart hereee")
+            val builder = okhttp3.MultipartBody.Builder().setType(okhttp3.MultipartBody.FORM)
+            val parts = netraRequestBody.content as List<NetraPart>
+
+            parts.forEach { part ->
+                val okHttpBody = when (val content = part.body.content) {
+                    is String -> content.toRequestBody(mediaType)
+                    is ByteArray -> content.toRequestBody(mediaType)
+                    is Map<*, *> -> {
+                        val jsonString = Gson().toJson(content)
+                        jsonString.toRequestBody(mediaType)
+                    }
+
+                    else -> "".toRequestBody(mediaType)
+                }
+                if (part.filename != null) {
+                    builder.addFormDataPart(part.name, part.filename, okHttpBody)
+                } else {
+                    builder.addFormDataPart(part.name, null, okHttpBody)
+                }
+            }
+            return builder.build()
         }
+    }
 
-        is Command.Post -> {
-            val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
-                .url(command.url)
-                .post(command.body)
+    private fun getRequest(reporter: StatusReporter?): Request {
+        return when (command) {
+            is Command.Get -> {
+                val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
+                    .url(command.url).get()
 
-            header?.forEach { (key, value) ->
-                requestBuilder.addHeader(key, value)
+                header?.forEach { (key, value) ->
+                    requestBuilder.addHeader(key, value)
+                }
+                requestBuilder.build()
             }
-            requestBuilder.build()
-        }
 
-        is Command.Put -> {
-            val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
-                .url(command.url)
-                .put(command.body)
+            is Command.Post -> {
+                val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
+                    .url(command.url)
+                    .post(getRequestBody(command.body))
 
-            header?.forEach { (key, value) ->
-                requestBuilder.addHeader(key, value)
+                header?.forEach { (key, value) ->
+                    requestBuilder.addHeader(key, value)
+                }
+                requestBuilder.build()
             }
-            requestBuilder.build()
-        }
 
-        is Command.Patch -> {
-            val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
-                .url(command.url)
-                .patch(command.body)
+            is Command.Put -> {
+                val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
+                    .url(command.url)
+                    .put(command.body)
 
-            header?.forEach { (key, value) ->
-                requestBuilder.addHeader(key, value)
+                header?.forEach { (key, value) ->
+                    requestBuilder.addHeader(key, value)
+                }
+                requestBuilder.build()
             }
-            requestBuilder.build()
-        }
 
-        is Command.Delete -> {
-            val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
-                .url(command.url)
-                .delete(command.body)
+            is Command.Patch -> {
+                val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
+                    .url(command.url)
+                    .patch(command.body)
 
-            header?.forEach { (key, value) ->
-                requestBuilder.addHeader(key, value)
+                header?.forEach { (key, value) ->
+                    requestBuilder.addHeader(key, value)
+                }
+                requestBuilder.build()
             }
-            requestBuilder.build()
+
+            is Command.Delete -> {
+                val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
+                    .url(command.url)
+                    .delete(command.body)
+
+                header?.forEach { (key, value) ->
+                    requestBuilder.addHeader(key, value)
+                }
+                requestBuilder.build()
+            }
         }
     }
 

@@ -53,7 +53,7 @@ class NetraClient private constructor(
         return RequestBuilder(context, Command.Get(baseUrl + path), client, converter)
     }
 
-    fun post(path: String, requestBody: RequestBody): RequestBuilder {
+    fun post(path: String, requestBody: NetraRequestBody): RequestBuilder {
         return RequestBuilder(context, Command.Post(baseUrl + path, requestBody), client, converter)
     }
 
