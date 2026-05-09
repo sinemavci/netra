@@ -140,15 +140,13 @@ class NetraCall<T>(
                     )
                 }
             } catch (e: Error) {
-                //   //todo
-//                callback(getNetraFailedResponse(e))
+                callback(getNetraFailedResponse(Exception(e.message)))
             } finally {
                 response.close()
             }
         } else {
-            //    //todo
-           // callback(Status.Error(response.code, "Server Error: ${response.code}"))
             response.close()
+            callback(getNetraFailedResponse(Exception(response.message)))
         }
     }
 
