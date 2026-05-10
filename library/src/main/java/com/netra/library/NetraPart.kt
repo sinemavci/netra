@@ -1,6 +1,6 @@
 package com.netra.library
 
-class NetraPart private constructor(
+class NetraPart(
     val name: String,
     val filename: String? = null,
     val body: NetraRequestBody
