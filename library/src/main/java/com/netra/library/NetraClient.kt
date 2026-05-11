@@ -20,15 +20,22 @@ class NetraClient private constructor(
     val context: Context,
     var baseUrl: String? = null,
     var converter: IConverter? = null,
+    var headers: Map<String, String>,
 ) {
     var id: String = UUID.randomUUID().mostSignificantBits.toString()
     data class Builder(
         val context: Context,
         var baseUrl: String? = null,
         var converter: IConverter? = null,
+        var headers: MutableMap<String, String> = mutableMapOf(),
     ) {
         fun baseUrl(url: String): Builder {
             this.baseUrl = url
+            return this
+        }
+
+        fun addHeaders(headerParam: Map<String, String>): Builder {
+            this.headers.putAll(headerParam)
             return this
         }
 
@@ -41,7 +48,7 @@ class NetraClient private constructor(
             initCompanion(context)
 
             if (baseUrl != null) {
-                return NetraClient(context, baseUrl!!, converter)
+                return NetraClient(context, baseUrl!!, converter, headers)
             } else {
                 throw Exception("Base url not found!")
             }
@@ -49,15 +56,15 @@ class NetraClient private constructor(
     }
 
     fun get(path: String): RequestBuilder {
-        return RequestBuilder(context, Command.Get(baseUrl + path), client, converter)
+        return RequestBuilder(context, Command.Get(baseUrl + path), client, converter, headers)
     }
 
     fun post(path: String, requestBody: NetraRequestBody): RequestBuilder {
-        return RequestBuilder(context, Command.Post(baseUrl + path, requestBody), client, converter)
+        return RequestBuilder(context, Command.Post(baseUrl + path, requestBody), client, converter, headers)
     }
 
     fun put(path: String, requestBody: NetraRequestBody): RequestBuilder {
-        return RequestBuilder(context, Command.Put(baseUrl + path, requestBody), client, converter)
+        return RequestBuilder(context, Command.Put(baseUrl + path, requestBody), client, converter, headers)
     }
 
     fun patch(path: String, requestBody: NetraRequestBody): RequestBuilder {
@@ -65,7 +72,8 @@ class NetraClient private constructor(
             context,
             Command.Patch(baseUrl + path, requestBody),
             client,
-            converter
+            converter,
+            headers
         )
     }
 
@@ -74,7 +82,8 @@ class NetraClient private constructor(
             context,
             Command.Delete(baseUrl + path, requestBody),
             client,
-            converter
+            converter,
+            headers
         )
     }
 

@@ -18,6 +18,7 @@ import com.netra.library.managers.CancelRequestManager
 import com.netra.library.managers.OfflineQueueManager
 import okhttp3.Call
 import okhttp3.Callback
+import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -126,6 +127,9 @@ class NetraCall<T>(
         }
     }
 
+    private fun Headers.toMap(): Map<String, String> =
+        names().associateWith { name -> get(name)!! }
+
     private fun handleOnResponse(response: Response, callback: (NetraResponse?) -> Unit) {
         CancelRequestManager.remove(command.url)
         if (response.isSuccessful) {
@@ -140,6 +144,7 @@ class NetraCall<T>(
                             statusCode = 200,
                             statusMessage = null,
                             isCache = false,
+                            headers = response.headers.toMap()
                         )
                     )
                 }
@@ -284,6 +289,7 @@ class NetraCall<T>(
                         statusCode = response.code,
                         statusMessage = response.message,
                         isCache = false,
+                        headers = response.headers.toMap()
                     )
                 }
 
@@ -359,6 +365,7 @@ class NetraCall<T>(
                         statusCode = response.code,
                         statusMessage = response.message,
                         isCache = false,
+                        headers = response.headers.toMap()
                     )
                 } catch (e: IOException) {
                     _netraResponse = getNetraFailedResponse(e)

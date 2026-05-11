@@ -5,4 +5,5 @@ data class NetraResponse(
     val statusCode: Int,
     val statusMessage: String?,
     val isCache: Boolean?,
+    val headers: Map<String, String>? = emptyMap()
 )
