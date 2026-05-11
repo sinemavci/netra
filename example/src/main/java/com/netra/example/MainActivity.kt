@@ -1,6 +1,7 @@
 package com.netra.example
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -17,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import com.google.gson.Gson
 import com.netra.example.ui.theme.NetraTheme
 import com.netra.library.Cache
 import com.netra.library.NetraClient
@@ -82,7 +84,7 @@ class MainActivity : ComponentActivity() {
             .withCache(Cache(null))
             .whenOffline(OfflinePolicyAction.USE_CACHE)
             .enqueue { result ->
-                Log.e("result", result?.statusCode.toString() )
+                 _bitmap.value = BitmapFactory.decodeByteArray(result?.data?.get("data") as ByteArray, 0, (result.data?.get("data") as ByteArray).size)
             }
     }
 
