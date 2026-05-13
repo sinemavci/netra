@@ -8,7 +8,8 @@ import android.net.NetworkRequest
 import androidx.collection.LruCache
 import com.netra.library.converter.IConverter
 import com.netra.library.enums.Command
-import com.netra.library.interceptors.NetraInterceptor
+import com.netra.library.interceptors.BaseInterceptor
+import com.netra.library.interceptors.CircuitBreakerInterceptor
 import com.netra.library.managers.OfflineQueueManager
 import okhttp3.OkHttpClient
 import java.util.UUID
@@ -36,6 +37,11 @@ class NetraClient private constructor(
 
         fun addHeaders(headerParam: Map<String, String>): Builder {
             this.headers.putAll(headerParam)
+            return this
+        }
+
+        fun circuitBreaker(failureThreshold: Int? = 5, retryDelayMs: Long? = 1000L): Builder {
+            client = OkHttpClient().newBuilder().addInterceptor(CircuitBreakerInterceptor(failureThreshold, retryDelayMs)).build()
             return this
         }
 
@@ -111,7 +117,7 @@ class NetraClient private constructor(
                     .getSystemService(ConnectivityManager::class.java)
             }
             if (!::client.isInitialized) {
-                client = OkHttpClient().newBuilder().addInterceptor(NetraInterceptor()).build()
+                client = OkHttpClient().newBuilder().addInterceptor(BaseInterceptor()).build()
             }
 
             OfflineQueueManager.init(context.applicationContext)

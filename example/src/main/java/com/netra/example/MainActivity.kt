@@ -105,12 +105,13 @@ class MainActivity : ComponentActivity() {
     fun handleGet() {
         val client = NetraClient.Builder(applicationContext)
             .baseUrl("http://10.0.2.2:3001")
+            .circuitBreaker()
             .addHeaders(mapOf("headercustom1" to "custom"))
             .addConverterFactory(
                 NetraKotlinxConverter()
             )
             .build()
-        val request = client.get("/?status=200&delay=2000")
+        val request = client.get("/?status=500&delay=2000")
             .slowMode()
             .addHeaders(mapOf("headercustom2" to "custom"))
             .asObject<Any>()
@@ -120,19 +121,15 @@ class MainActivity : ComponentActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
 
-            val response = request.execute()
-            Log.e("", "netra response: headers: ${response.statusCode} ${response.data}")
-
-            response.headers?.forEach { string, string1 ->
-                Log.e("", "netra execute: headers: ${string} ${string1}")
+            request.enqueue { result ->
+                result?.headers?.forEach { string, string1 ->
+                    Log.e("", "netra enqueue: headers: ${string} ${string1}")
+                }
+                Log.e(
+                    "result is success",
+                    "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
+                )
             }
-
-        request.enqueue { result ->
-            result?.headers?.forEach { string, string1 ->
-                Log.e("", "netra enqueue: headers: ${string} ${string1}")
-            }
-                Log.e("result is success", "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}")
-        }
 //
         }
 //        Handler(Looper.getMainLooper()).postDelayed({

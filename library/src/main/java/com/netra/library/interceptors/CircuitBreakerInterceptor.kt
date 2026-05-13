@@ -8,8 +8,8 @@ import okhttp3.Response
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-class NetraInterceptor : Interceptor {
-    private val maxRetries = 5
+class CircuitBreakerInterceptor(failureThreshold: Int? = 5, val retryDelayMs: Long? = 1000L) : Interceptor {
+    private val maxRetries = failureThreshold ?: 5
 
     private fun shouldRetry(response: Response): Boolean {
         val code = response.code
@@ -49,7 +49,7 @@ class NetraInterceptor : Interceptor {
             attempt++
             //reporter?.onStatusUpdate(Status.Retrying(response.code, attempt))
 
-            Thread.sleep(1000 * attempt.toLong())
+            Thread.sleep((retryDelayMs ?: 1000L) * attempt.toLong())
             response = currentChain.proceed(request)
         }
 
