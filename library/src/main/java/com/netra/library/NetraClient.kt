@@ -12,6 +12,7 @@ import com.netra.library.enums.Command
 import com.netra.library.interceptors.BaseInterceptor
 import com.netra.library.interceptors.CircuitBreakerInterceptor
 import com.netra.library.managers.OfflineQueueManager
+import com.netra.library.utils.EventDispatcher
 import okhttp3.OkHttpClient
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger

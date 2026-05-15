@@ -1,5 +1,6 @@
-package com.netra.library
+package com.netra.library.utils
 
+import com.netra.library.EventDispatcherProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
