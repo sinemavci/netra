@@ -18,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
-import com.google.gson.Gson
 import com.netra.example.ui.theme.NetraTheme
 import com.netra.library.Cache
 import com.netra.library.NetraClient
@@ -111,12 +110,12 @@ class MainActivity : ComponentActivity() {
                 NetraKotlinxConverter()
             )
             .build()
-        val request = client.get("/?status=500&delay=2000")
+        val request = client.get("/?status=200&delay=2000")
             .slowMode()
             .addHeaders(mapOf("headercustom2" to "custom"))
             .asObject<Any>()
-            .withCache(Cache(null))
-            .whenOffline(OfflinePolicyAction.RETRY(5))
+            .withCache(Cache())
+            .whenOffline(OfflinePolicyAction.USE_CACHE)
             .whenSlowNetwork(SlowNetworkPolicyAction.USE_CACHE)
 
         CoroutineScope(Dispatchers.IO).launch {
