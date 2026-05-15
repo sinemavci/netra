@@ -126,11 +126,23 @@ class NetraClient private constructor(
 
         internal val observers = mutableListOf<INetraObserver>()
 
-        internal fun notifyRequestEvent(event: NetworkEvent) {
+        internal fun notifyNetworkEvent(event: NetworkEvent) {
             EventDispatcher.runOnMain {
                 observers.toTypedArray().forEach { observer ->
                     try {
                         observer.onNetworkChanged(event)
+                    } catch (e: Exception) {
+                        Log.e("MapRays", "Error in observer: ${e.message}", e)
+                    }
+                }
+            }
+        }
+
+        internal fun notifyCacheEvent(event: CacheEvent) {
+            EventDispatcher.runOnMain {
+                observers.toTypedArray().forEach { observer ->
+                    try {
+                        observer.onCacheChanged(event)
                     } catch (e: Exception) {
                         Log.e("MapRays", "Error in observer: ${e.message}", e)
                     }
@@ -157,7 +169,7 @@ class NetraClient private constructor(
             val networkCallback = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
                     OfflineQueueManager.processQueue(client = client)
-                    notifyRequestEvent(NetworkEvent.ConnectionRestored)
+                    notifyNetworkEvent(NetworkEvent.ConnectionRestored)
                     super.onAvailable(network)
                 }
             }

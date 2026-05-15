@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import com.netra.example.ui.theme.NetraTheme
 import com.netra.library.Cache
+import com.netra.library.CacheEvent
 import com.netra.library.INetraObserver
 import com.netra.library.NetraClient
 import com.netra.library.NetraPart
@@ -111,7 +112,14 @@ class MainActivity : ComponentActivity() {
                 override fun onNetworkChanged(event: NetworkEvent) {
                     Log.e(
                         "",
-                        "client observer here: ${event}}"
+                        "client NetworkEvent observer here: ${event}}"
+                    )
+                }
+
+                override fun onCacheChanged(event: CacheEvent) {
+                    Log.e(
+                        "",
+                        "client CacheEvent observer here: ${event}}"
                     )
                 }
             })
@@ -131,7 +139,14 @@ class MainActivity : ComponentActivity() {
                 override fun onNetworkChanged(event: NetworkEvent) {
                     Log.e(
                         "",
-                        "request observer here: ${event}}"
+                        "request NetworkEvent observer here: ${event}}"
+                    )
+                }
+
+                override fun onCacheChanged(event: CacheEvent) {
+                    Log.e(
+                        "",
+                        "request CacheEvent observer here: ${event}}"
                     )
                 }
             })

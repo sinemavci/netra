@@ -1,6 +1,6 @@
 package com.netra.library.utils
 
-import com.netra.library.EventDispatcherProvider
+import com.netra.library.utils.EventDispatcherProvider
 
 object EventDispatcher : EventDispatcherProvider {
     var provider: EventDispatcherProvider? = null

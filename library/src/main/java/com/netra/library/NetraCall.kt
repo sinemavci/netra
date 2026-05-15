@@ -56,7 +56,7 @@ class NetraCall<T>(
         val caps = NetraClient.connectivityManager.getNetworkCapabilities(network)
         val isConnectedResult = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) ?: false
         if (!isConnectedResult) {
-            NetraClient.notifyRequestEvent(NetworkEvent.Offline)
+            NetraClient.notifyNetworkEvent(NetworkEvent.Offline)
         }
         return isConnectedResult
     }
@@ -133,7 +133,7 @@ class NetraCall<T>(
 
         val result = when {
             !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED) -> {
-                NetraClient.notifyRequestEvent(NetworkEvent.SlowNetwork)
+                NetraClient.notifyNetworkEvent(NetworkEvent.SlowNetwork)
                 return NetworkSeverity.DEGRADED
             }
 
@@ -326,7 +326,6 @@ class NetraCall<T>(
     }
 
     private fun getCacheResponse(e: IOException?, expireControl: Boolean): NetraResponse {
-        Log.e("", "slow network policy uses cache")
         val cacheDirectory = context.cacheDir
         lateinit var _response: NetraResponse
         val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")

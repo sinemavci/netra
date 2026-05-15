@@ -1,4 +1,4 @@
-package com.netra.library
+package com.netra.library.utils
 
 interface EventDispatcherProvider {
     fun runOnMain(action: () -> Unit)
