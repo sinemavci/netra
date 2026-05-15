@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.util.Log
 import androidx.collection.LruCache
 import com.netra.library.converter.IConverter
 import com.netra.library.enums.Command
@@ -47,6 +48,18 @@ class NetraClient private constructor(
 
         fun addConverterFactory(netraConverter: IConverter?): Builder {
             this.converter = netraConverter
+            return this
+        }
+
+        fun addObserver(observer: INetraObserver): Builder {
+            if (observer !in observers) {
+                observers.add(observer)
+            }
+            return this
+        }
+
+        fun removeObserver(observer: INetraObserver): Builder {
+            observers.remove(observer)
             return this
         }
 
@@ -110,6 +123,19 @@ class NetraClient private constructor(
         internal lateinit var client: OkHttpClient
             private set
 
+        internal val observers = mutableListOf<INetraObserver>()
+
+        internal fun notifyRequestEvent(event: NetworkEvent) {
+            EventDispatcher.runOnMain {
+                observers.toTypedArray().forEach { observer ->
+                    try {
+                        observer.onNetworkChanged(event)
+                    } catch (e: Exception) {
+                        Log.e("MapRays", "Error in observer: ${e.message}", e)
+                    }
+                }
+            }
+        }
 
         internal fun initCompanion(context: Context) {
             if (!::connectivityManager.isInitialized) {
@@ -130,6 +156,7 @@ class NetraClient private constructor(
             val networkCallback = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
                     OfflineQueueManager.processQueue(client = client)
+                    notifyRequestEvent(NetworkEvent.ConnectionRestored)
                     super.onAvailable(network)
                 }
             }

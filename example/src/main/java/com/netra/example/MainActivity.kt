@@ -20,9 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import com.netra.example.ui.theme.NetraTheme
 import com.netra.library.Cache
+import com.netra.library.INetraObserver
 import com.netra.library.NetraClient
 import com.netra.library.NetraPart
 import com.netra.library.NetraRequestBody
+import com.netra.library.NetworkEvent
 import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
 import com.netra.library.converter.NetraKotlinxConverter
@@ -105,6 +107,14 @@ class MainActivity : ComponentActivity() {
         val client = NetraClient.Builder(applicationContext)
             .baseUrl("http://10.0.2.2:3001")
             .circuitBreaker()
+            .addObserver(object : INetraObserver {
+                override fun onNetworkChanged(event: NetworkEvent) {
+                    Log.e(
+                        "",
+                        "client observer here: ${event}}"
+                    )
+                }
+            })
             .addHeaders(mapOf("headercustom1" to "custom"))
             .addConverterFactory(
                 NetraKotlinxConverter()
@@ -117,6 +127,14 @@ class MainActivity : ComponentActivity() {
             .withCache(Cache())
             .whenOffline(OfflinePolicyAction.USE_CACHE)
             .whenSlowNetwork(SlowNetworkPolicyAction.USE_CACHE)
+            .addObserver(object : INetraObserver {
+                override fun onNetworkChanged(event: NetworkEvent) {
+                    Log.e(
+                        "",
+                        "request observer here: ${event}}"
+                    )
+                }
+            })
 
         CoroutineScope(Dispatchers.IO).launch {
 
