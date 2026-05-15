@@ -14,6 +14,7 @@ import com.netra.library.enums.NetworkSeverity
 import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
 import com.netra.library.interceptors.RetryInterceptor
+import com.netra.library.managers.CacheManager
 import com.netra.library.managers.CancelRequestManager
 import com.netra.library.managers.OfflineQueueManager
 import okhttp3.Call
@@ -43,7 +44,7 @@ class NetraCall<T>(
     val converter: IConverter?,
     val header: Map<String, String>?,
 ) {
-    private var _cache: Cache? = null
+    private var cacheManager = CacheManager(context, command)
     private var offlinePolicyAction: OfflinePolicyAction? = null
     private var slowNetworkPolicyAction: SlowNetworkPolicyAction? = null
     private var retriesCount: Int? = null
@@ -62,7 +63,7 @@ class NetraCall<T>(
     }
 
     fun withCache(cache: Cache): NetraCall<T> {
-        _cache = cache
+        cacheManager.cache = cache
         return this
     }
 
@@ -76,7 +77,7 @@ class NetraCall<T>(
         if (offlinePolicyAction is OfflinePolicyAction.RETRY) {
             retriesCount = (offlinePolicyAction as OfflinePolicyAction.RETRY).retries
         } else if (offlinePolicyAction is OfflinePolicyAction.USE_CACHE) {
-            _cache = Cache()
+            cacheManager.cache = Cache()
         }
         return this
     }
@@ -112,19 +113,6 @@ class NetraCall<T>(
         }
     }
 
-    private fun shouldUseCache(file: File, ttlMillis: Long): Boolean {
-        val lastModified = file.lastModified()
-        val now = System.currentTimeMillis()
-        Log.e("shouldUseCache", "${(now - lastModified) < ttlMillis} ${(now - lastModified)}")
-        return (now - lastModified) < ttlMillis
-    }
-
-    private fun getCacheKey(command: Command): String {
-        val bytes = MessageDigest.getInstance("MD5")
-            .digest(command.url.toByteArray() + command.toString().toByteArray())
-        return bytes.joinToString("") { "%02x".format(it) }
-    }
-
     private fun getNetworkSpeedState(): NetworkSeverity {
         val network =
             NetraClient.connectivityManager.activeNetwork ?: return NetworkSeverity.NORMAL
@@ -145,7 +133,20 @@ class NetraCall<T>(
     private fun handleOnFailure(call: Call, e: IOException, callback: (NetraResponse?) -> Unit) {
         CancelRequestManager.remove(command.url)
         if (!call.isCanceled()) {
-           callback(getCacheResponse(e, true))
+            val cache = cacheManager.getCacheIfValid()
+            if (cache?.isNotEmpty() == true) {
+                val response = handleConvertedResponse(cache)
+                callback(
+                    NetraResponse(
+                        data = mapOf("data" to response),
+                        statusCode = 200,
+                        statusMessage = null,
+                        isCache = true,
+                    )
+                )
+            } else {
+                callback(getNetraFailedResponse(Exception("Cache not found!")))
+            }
         }
     }
 
@@ -158,7 +159,7 @@ class NetraCall<T>(
             try {
                 val bodyBytes = response.body?.bytes()
                 bodyBytes?.let {
-                    writeCacheResponse(it)
+                    cacheManager.writeCacheResponse(it)
                     val convertedResponse = handleConvertedResponse(it)
                     callback(
                         NetraResponse(
@@ -279,24 +280,6 @@ class NetraCall<T>(
         }
     }
 
-    private fun writeCacheResponse(response: ByteArray?) {
-        val bodyBytes = response ?: return
-
-        _cache?.let {
-            val cacheDirectory = context.cacheDir
-            val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
-            Log.e("cache file", "cache file re-created: ${cacheFile.name}")
-
-            if (cacheFile.exists()) {
-                cacheFile.delete()
-            }
-
-            cacheFile.createNewFile()
-            cacheFile.writeBytes(bodyBytes)
-            NetraClient.memoryCache.put(command.url, bodyBytes)
-        }
-    }
-
     private fun executeCommand(call: Call): NetraResponse {
         val latch = CountDownLatch(1)
         lateinit var _response: NetraResponse
@@ -305,7 +288,7 @@ class NetraCall<T>(
                 val response = call.execute()
                 val bodyBytes = response.body?.bytes()
                 bodyBytes?.let {
-                    writeCacheResponse(it)
+                    cacheManager.writeCacheResponse(it)
                     _response = NetraResponse(
                         data = mapOf("data" to handleConvertedResponse(it)),
                         statusCode = response.code,
@@ -322,41 +305,6 @@ class NetraCall<T>(
             }
         })
         latch.await()
-        return _response
-    }
-
-    private fun getCacheResponse(e: IOException?, expireControl: Boolean): NetraResponse {
-        val cacheDirectory = context.cacheDir
-        lateinit var _response: NetraResponse
-        val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
-        val shouldUseCache = if(expireControl) {
-            shouldUseCache(cacheFile, _cache?.ttl ?: 600000)
-        } else {
-            true
-        }
-        val cacheValue: ByteArray? = if (cacheFile.exists()) {
-            cacheFile.readBytes()
-        } else {
-            null
-        }
-        if (_cache == null) {
-            _response = getNetraFailedResponse(e ?: Exception("Cache not found"))
-
-        } else if (shouldUseCache) {
-            if (cacheValue == null || cacheValue.isEmpty()) {
-                _response = getNetraFailedResponse(Exception("Cache not found"))
-            } else {
-                val response = handleConvertedResponse(cacheValue)
-                _response = NetraResponse(
-                    data = mapOf("data" to response),
-                    statusCode = 200,
-                    statusMessage = null,
-                    isCache = true,
-                )
-            }
-        } else {
-            _response = getNetraFailedResponse(e ?: Exception("Cache not found"))
-        }
         return _response
     }
 
@@ -416,7 +364,17 @@ class NetraCall<T>(
             } else {
                 when (slowNetworkPolicyAction) {
                     is SlowNetworkPolicyAction.USE_CACHE -> {
-                        netraResponse = getCacheResponse(null, false)
+                        val cache = cacheManager.getCacheAllowExpired()
+                        netraResponse = if (cache?.isNotEmpty() == true) {
+                            NetraResponse(
+                                data = mapOf("data" to handleConvertedResponse(cache)),
+                                statusCode = 200,
+                                statusMessage = null,
+                                isCache = true,
+                            )
+                        } else {
+                            getNetraFailedResponse(Exception("Cache not found!"))
+                        }
                     }
 
                     is SlowNetworkPolicyAction.TIMEOUT -> {
@@ -455,7 +413,17 @@ class NetraCall<T>(
                 }
 
                 is OfflinePolicyAction.USE_CACHE -> {
-                    netraResponse = getCacheResponse(null, false)
+                    val cache = cacheManager.getCacheAllowExpired()
+                    netraResponse = if (cache?.isNotEmpty() == true) {
+                        NetraResponse(
+                            data = mapOf("data" to handleConvertedResponse(cache)),
+                            statusCode = 200,
+                            statusMessage = null,
+                            isCache = true,
+                        )
+                    } else {
+                        getNetraFailedResponse(Exception("Cache not found!"))
+                    }
                 }
 
                 is OfflinePolicyAction.THROW_ERROR -> {
@@ -496,7 +464,19 @@ class NetraCall<T>(
             } else {
                 when (slowNetworkPolicyAction) {
                     is SlowNetworkPolicyAction.USE_CACHE -> {
-                        callback(getCacheResponse(null, false))
+                        val cache = cacheManager.getCacheAllowExpired()
+                        if (cache?.isNotEmpty() == true) {
+                            callback(
+                                NetraResponse(
+                                    data = mapOf("data" to handleConvertedResponse(cache)),
+                                    statusCode = 200,
+                                    statusMessage = null,
+                                    isCache = true,
+                                )
+                            )
+                        } else {
+                            callback(getNetraFailedResponse(Exception("Cache not found!")))
+                        }
                     }
 
                     is SlowNetworkPolicyAction.TIMEOUT -> {
@@ -555,7 +535,19 @@ class NetraCall<T>(
                 }
 
                 is OfflinePolicyAction.USE_CACHE -> {
-                    callback(getCacheResponse(null, false))
+                    val cache = cacheManager.getCacheAllowExpired()
+                    if (cache?.isNotEmpty() == true) {
+                        callback(
+                            NetraResponse(
+                                data = mapOf("data" to handleConvertedResponse(cache)),
+                                statusCode = 200,
+                                statusMessage = null,
+                                isCache = true,
+                            )
+                        )
+                    } else {
+                        callback(getNetraFailedResponse(Exception("Cache not found!")))
+                    }
                 }
 
                 is OfflinePolicyAction.THROW_ERROR -> {
