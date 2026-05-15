@@ -76,7 +76,7 @@ class NetraCall<T>(
         if (offlinePolicyAction is OfflinePolicyAction.RETRY) {
             retriesCount = (offlinePolicyAction as OfflinePolicyAction.RETRY).retries
         } else if (offlinePolicyAction is OfflinePolicyAction.USE_CACHE) {
-            _cache = Cache(null)
+            _cache = Cache()
         }
         return this
     }
@@ -145,7 +145,7 @@ class NetraCall<T>(
     private fun handleOnFailure(call: Call, e: IOException, callback: (NetraResponse?) -> Unit) {
         CancelRequestManager.remove(command.url)
         if (!call.isCanceled()) {
-           callback(getCacheResponse(e))
+           callback(getCacheResponse(e, true))
         }
     }
 
@@ -325,11 +325,16 @@ class NetraCall<T>(
         return _response
     }
 
-    private fun getCacheResponse(e: IOException?): NetraResponse {
+    private fun getCacheResponse(e: IOException?, expireControl: Boolean): NetraResponse {
         Log.e("", "slow network policy uses cache")
         val cacheDirectory = context.cacheDir
         lateinit var _response: NetraResponse
         val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
+        val shouldUseCache = if(expireControl) {
+            shouldUseCache(cacheFile, _cache?.ttl ?: 600000)
+        } else {
+            true
+        }
         val cacheValue: ByteArray? = if (cacheFile.exists()) {
             cacheFile.readBytes()
         } else {
@@ -338,7 +343,7 @@ class NetraCall<T>(
         if (_cache == null) {
             _response = getNetraFailedResponse(e ?: Exception("Cache not found"))
 
-        } else if (shouldUseCache(cacheFile, _cache?.ttl ?: 600000)) {
+        } else if (shouldUseCache) {
             if (cacheValue == null || cacheValue.isEmpty()) {
                 _response = getNetraFailedResponse(Exception("Cache not found"))
             } else {
@@ -412,7 +417,7 @@ class NetraCall<T>(
             } else {
                 when (slowNetworkPolicyAction) {
                     is SlowNetworkPolicyAction.USE_CACHE -> {
-                        netraResponse = getCacheResponse(null)
+                        netraResponse = getCacheResponse(null, false)
                     }
 
                     is SlowNetworkPolicyAction.TIMEOUT -> {
@@ -451,7 +456,7 @@ class NetraCall<T>(
                 }
 
                 is OfflinePolicyAction.USE_CACHE -> {
-                    netraResponse = getCacheResponse(null)
+                    netraResponse = getCacheResponse(null, false)
                 }
 
                 is OfflinePolicyAction.THROW_ERROR -> {
@@ -492,7 +497,7 @@ class NetraCall<T>(
             } else {
                 when (slowNetworkPolicyAction) {
                     is SlowNetworkPolicyAction.USE_CACHE -> {
-                        callback(getCacheResponse(null))
+                        callback(getCacheResponse(null, false))
                     }
 
                     is SlowNetworkPolicyAction.TIMEOUT -> {
@@ -551,7 +556,7 @@ class NetraCall<T>(
                 }
 
                 is OfflinePolicyAction.USE_CACHE -> {
-                    callback(getCacheResponse(null))
+                    callback(getCacheResponse(null, false))
                 }
 
                 is OfflinePolicyAction.THROW_ERROR -> {
