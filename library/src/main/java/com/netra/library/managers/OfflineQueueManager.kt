@@ -4,6 +4,9 @@ import android.content.Context
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.netra.library.NetraClient
+import com.netra.library.NetraResponse
+import com.netra.library.RequestQueuedEvent
 import com.netra.library.database.NetraDatabase
 import com.netra.library.database.PersistentRequest
 import com.netra.library.database.QueueDao
@@ -23,7 +26,7 @@ object OfflineQueueManager {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     fun init(context: Context) {
-        dao = NetraDatabase.Companion.getDatabase(context).queueDao()
+        dao = NetraDatabase.getDatabase(context).queueDao()
     }
 
     fun push(request: Request) {
@@ -36,6 +39,13 @@ object OfflineQueueManager {
                     method = request.method,
                     body = jsonConverter.toJson(request.body),
                     headersJson = jsonConverter.toJson(request.headers.toMultimap()),
+                )
+            )
+            NetraClient.notifyQueuedEvent(
+                RequestQueuedEvent.RequestQueued(
+                    key = request.url.toString(),
+                    queueOrder = dao.getAllRequests().size,
+                    createdAt = System.currentTimeMillis()
                 )
             )
             Log.e("Netra", "Request persisted to DB: ${request.url}")
@@ -76,17 +86,44 @@ object OfflineQueueManager {
                     .method(savedReq.method, body)
                     .headers(headerBuilder.build())
                     .build()
+                NetraClient.notifyQueuedEvent(
+                    RequestQueuedEvent.QueuedRequestRestored(
+                        key = request.url.toString(),
+                    )
+                )
 
                 try {
                     val response = client.newCall(request).execute()
                     if (response.isSuccessful) {
                         dao.deleteRequest(savedReq.id)
+                        NetraClient.notifyQueuedEvent(
+                            RequestQueuedEvent.QueuedRequestExecuted(
+                                key = request.url.toString(),
+                                response = NetraResponse(
+                                    data = mapOf("data" to response.body?.bytes()),
+                                    statusCode = response.code,
+                                    statusMessage = response.message,
+                                    isCache = false,
+                                    headers = response.headers.toMap()
+                                )
+                            )
+                        )
                         Log.d("Netra", "Successfully synced: ${savedReq.url} ${response.body}")
+                    } else {
+                        NetraClient.notifyQueuedEvent(
+                            RequestQueuedEvent.QueuedRequestFailed(
+                                key = request.url.toString(),
+                            )
+                        )
                     }
                     response.close()
                 } catch (e: IOException) {
                     Log.e("Netra", "Sync failed for ${savedReq.url}, keeping in queue.")
-                    // Don't delete; it stays in DB for next attempt
+                    NetraClient.notifyQueuedEvent(
+                        RequestQueuedEvent.QueuedRequestFailed(
+                            key = request.url.toString(),
+                        )
+                    )
                 }
                 dao.deleteRequest(savedReq.id)
             }

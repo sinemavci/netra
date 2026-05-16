@@ -26,6 +26,7 @@ import com.netra.library.NetraClient
 import com.netra.library.NetraPart
 import com.netra.library.NetraRequestBody
 import com.netra.library.NetworkEvent
+import com.netra.library.RequestQueuedEvent
 import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
 import com.netra.library.converter.NetraKotlinxConverter
@@ -118,8 +119,7 @@ class MainActivity : ComponentActivity() {
             .addHeaders(mapOf("headercustom2" to "custom"))
             .asObject<Any>()
             .withCache(Cache())
-            .whenOffline(OfflinePolicyAction.USE_CACHE)
-            .whenSlowNetwork(SlowNetworkPolicyAction.USE_CACHE)
+            .whenOffline(OfflinePolicyAction.QUEUE)
             .addObserver(object : INetraObserver {
                 override fun onNetworkChanged(event: NetworkEvent) {
                     Log.e(
@@ -162,6 +162,35 @@ class MainActivity : ComponentActivity() {
                             Log.e(
                                 "",
                                 "request CacheEvent.CacheHit observer here: ${event.key} ${event.ageMs}"
+                            )
+                        }
+                    }
+                }
+
+                override fun onQueueChanged(event: RequestQueuedEvent) {
+                    when (event) {
+                        is RequestQueuedEvent.RequestQueued -> {
+                            Log.e(
+                                "",
+                                "request RequestQueuedEvent.RequestQueued observer here: ${event.key} queueOrder: ${event.queueOrder}"
+                            )
+                        }
+                        is RequestQueuedEvent.QueuedRequestRestored -> {
+                            Log.e(
+                                "",
+                                "request RequestQueuedEvent.QueuedRequestRestored observer here: ${event.key}"
+                            )
+                        }
+                        is RequestQueuedEvent.QueuedRequestExecuted -> {
+                            Log.e(
+                                "",
+                                "request RequestQueuedEvent.QueuedRequestExecuted observer here: ${event.key} statusCode: ${event.response.statusCode}"
+                            )
+                        }
+                        is RequestQueuedEvent.QueuedRequestFailed -> {
+                            Log.e(
+                                "",
+                                "request RequestQueuedEvent.QueuedRequestFailed observer here: ${event.key}"
                             )
                         }
                     }

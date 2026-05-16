@@ -150,6 +150,18 @@ class NetraClient private constructor(
             }
         }
 
+        internal fun notifyQueuedEvent(event: RequestQueuedEvent) {
+            EventDispatcher.runOnMain {
+                observers.toTypedArray().forEach { observer ->
+                    try {
+                        observer.onQueueChanged(event)
+                    } catch (e: Exception) {
+                        Log.e("MapRays", "Error in observer: ${e.message}", e)
+                    }
+                }
+            }
+        }
+
         internal fun initCompanion(context: Context) {
             if (!::connectivityManager.isInitialized) {
                 connectivityManager = context.applicationContext
@@ -168,8 +180,8 @@ class NetraClient private constructor(
 
             val networkCallback = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
-                    OfflineQueueManager.processQueue(client = client)
                     notifyNetworkEvent(NetworkEvent.ConnectionRestored)
+                    OfflineQueueManager.processQueue(client = client)
                     super.onAvailable(network)
                 }
             }
