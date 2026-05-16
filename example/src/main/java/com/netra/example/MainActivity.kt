@@ -108,21 +108,6 @@ class MainActivity : ComponentActivity() {
         val client = NetraClient.Builder(applicationContext)
             .baseUrl("http://10.0.2.2:3001")
             .circuitBreaker()
-            .addObserver(object : INetraObserver {
-                override fun onNetworkChanged(event: NetworkEvent) {
-                    Log.e(
-                        "",
-                        "client NetworkEvent observer here: ${event}}"
-                    )
-                }
-
-                override fun onCacheChanged(event: CacheEvent) {
-                    Log.e(
-                        "",
-                        "client CacheEvent observer here: ${event}}"
-                    )
-                }
-            })
             .addHeaders(mapOf("headercustom1" to "custom"))
             .addConverterFactory(
                 NetraKotlinxConverter()
@@ -144,10 +129,42 @@ class MainActivity : ComponentActivity() {
                 }
 
                 override fun onCacheChanged(event: CacheEvent) {
-                    Log.e(
-                        "",
-                        "request CacheEvent observer here: ${event}}"
-                    )
+                    when (event) {
+                        is CacheEvent.StaleCacheUsed -> {
+                            Log.e(
+                                "",
+                                "request CacheEvent.StaleCacheUsed observer here: ${event.key} ${event.ageMs} ${event.expiredByMs}}"
+                            )
+                        }
+
+                        is CacheEvent.CacheMiss -> {
+                            Log.e(
+                                "",
+                                "request CacheEvent.CacheMiss observer here: ${event.key}"
+                            )
+                        }
+
+                        is CacheEvent.CacheExpired -> {
+                            Log.e(
+                                "",
+                                "request CacheEvent.CacheExpired observer here: ${event.key} ${event.ageMs} ${event.expiredByMs}}"
+                            )
+                        }
+
+                        is CacheEvent.CacheStored -> {
+                            Log.e(
+                                "",
+                                "request CacheEvent.CacheStored observer here: ${event.key} ${event.ageMs}}"
+                            )
+                        }
+
+                        is CacheEvent.CacheHit -> {
+                            Log.e(
+                                "",
+                                "request CacheEvent.CacheHit observer here: ${event.key} ${event.ageMs}"
+                            )
+                        }
+                    }
                 }
             })
 
