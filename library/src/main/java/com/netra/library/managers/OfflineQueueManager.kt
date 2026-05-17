@@ -6,7 +6,8 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.netra.library.NetraClient
 import com.netra.library.NetraResponse
-import com.netra.library.RequestQueuedEvent
+import com.netra.library.converter.NetraGsonConverter
+import com.netra.library.observers.RequestQueuedEvent
 import com.netra.library.database.NetraDatabase
 import com.netra.library.database.PersistentRequest
 import com.netra.library.database.QueueDao
@@ -96,11 +97,15 @@ object OfflineQueueManager {
                     val response = client.newCall(request).execute()
                     if (response.isSuccessful) {
                         dao.deleteRequest(savedReq.id)
+                        //todo: get converted setted in client
+                        val convertedResult =
+                            NetraGsonConverter().convert<Any>(response.body!!.bytes(), Any::class.java)
+
                         NetraClient.notifyQueuedEvent(
                             RequestQueuedEvent.QueuedRequestExecuted(
                                 key = request.url.toString(),
                                 response = NetraResponse(
-                                    data = mapOf("data" to response.body?.bytes()),
+                                    data = mapOf("data" to convertedResult),
                                     statusCode = response.code,
                                     statusMessage = response.message,
                                     isCache = false,

@@ -1,4 +1,4 @@
-package com.netra.library
+package com.netra.library.observers
 
 interface INetraObserver {
     fun onNetworkChanged(event: NetworkEvent)

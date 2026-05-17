@@ -1,4 +1,6 @@
-package com.netra.library
+package com.netra.library.observers
+
+import com.netra.library.NetraResponse
 
 sealed interface NetworkEvent {
     object Offline : NetworkEvent

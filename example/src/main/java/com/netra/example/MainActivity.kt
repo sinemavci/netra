@@ -20,13 +20,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import com.netra.example.ui.theme.NetraTheme
 import com.netra.library.Cache
-import com.netra.library.CacheEvent
-import com.netra.library.INetraObserver
+import com.netra.library.observers.CacheEvent
+import com.netra.library.observers.INetraObserver
 import com.netra.library.NetraClient
 import com.netra.library.NetraPart
 import com.netra.library.NetraRequestBody
-import com.netra.library.NetworkEvent
-import com.netra.library.RequestQueuedEvent
+import com.netra.library.observers.NetworkEvent
+import com.netra.library.observers.RequestQueuedEvent
 import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
 import com.netra.library.converter.NetraKotlinxConverter
@@ -114,6 +114,7 @@ class MainActivity : ComponentActivity() {
                 NetraKotlinxConverter()
             )
             .build()
+
         val request = client.get("/?status=200&delay=2000")
             .slowMode()
             .addHeaders(mapOf("headercustom2" to "custom"))

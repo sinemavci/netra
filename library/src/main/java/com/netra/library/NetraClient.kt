@@ -12,6 +12,10 @@ import com.netra.library.enums.Command
 import com.netra.library.interceptors.BaseInterceptor
 import com.netra.library.interceptors.CircuitBreakerInterceptor
 import com.netra.library.managers.OfflineQueueManager
+import com.netra.library.observers.CacheEvent
+import com.netra.library.observers.INetraObserver
+import com.netra.library.observers.NetworkEvent
+import com.netra.library.observers.RequestQueuedEvent
 import com.netra.library.utils.EventDispatcher
 import okhttp3.OkHttpClient
 import java.util.UUID
@@ -26,6 +30,16 @@ class NetraClient private constructor(
     var headers: Map<String, String>,
 ) {
     var id: String = UUID.randomUUID().mostSignificantBits.toString()
+
+    fun addObserver(observer: INetraObserver) {
+        if (observer !in observers) {
+            observers.add(observer)
+        }
+    }
+
+    fun removeObserver(observer: INetraObserver) {
+        observers.remove(observer)
+    }
     data class Builder(
         val context: Context,
         var baseUrl: String? = null,
@@ -49,18 +63,6 @@ class NetraClient private constructor(
 
         fun addConverterFactory(netraConverter: IConverter?): Builder {
             this.converter = netraConverter
-            return this
-        }
-
-        fun addObserver(observer: INetraObserver): Builder {
-            if (observer !in observers) {
-                observers.add(observer)
-            }
-            return this
-        }
-
-        fun removeObserver(observer: INetraObserver): Builder {
-            observers.remove(observer)
             return this
         }
 

@@ -2,7 +2,7 @@ package com.netra.library.managers
 
 import android.content.Context
 import com.netra.library.Cache
-import com.netra.library.CacheEvent
+import com.netra.library.observers.CacheEvent
 import com.netra.library.NetraClient
 import com.netra.library.enums.Command
 import java.io.File

@@ -17,6 +17,8 @@ import com.netra.library.interceptors.RetryInterceptor
 import com.netra.library.managers.CacheManager
 import com.netra.library.managers.CancelRequestManager
 import com.netra.library.managers.OfflineQueueManager
+import com.netra.library.observers.INetraObserver
+import com.netra.library.observers.NetworkEvent
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Headers
@@ -26,11 +28,9 @@ import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
-import java.io.File
 import java.io.IOException
 import java.lang.reflect.Type
 import java.net.ConnectException
-import java.security.MessageDigest
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
