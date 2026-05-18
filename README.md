@@ -1,0 +1,433 @@
+# Netra Android SDK
+
+A lightweight and developer-friendly Android networking SDK with built-in caching, offline queueing, slow network strategies, observers, multipart upload support, and Kotlin-first APIs.
+
+---
+
+## Features
+
+- ⚡ Simple and fluent API
+- 📦 GET, POST, PUT, PATCH, DELETE support
+- 🧠 Smart caching system
+- 📡 Offline request queueing
+- 🐢 Slow network handling strategies
+- 👀 Request lifecycle observers
+- 🖼 Multipart file/image upload
+- 🔄 Automatic queued request restoration
+- 🧩 Converter support (`Kotlinx Serialization`, Gson, etc.)
+- 🛑 Request cancellation
+- 🔥 Circuit breaker support
+- 🧵 Coroutine-friendly
+- 🛜 Custom headers support
+
+---
+
+# Installation
+
+## Gradle
+
+```kotlin
+dependencies {
+    implementation("com.netra:netra:x.x.x")
+}
+```
+
+---
+
+# Basic Usage
+
+## Create Client
+
+```kotlin
+val client = NetraClient.Builder(applicationContext)
+    .baseUrl("https://api.example.com")
+    .build()
+```
+
+---
+
+# GET Request
+
+```kotlin
+client.get("/users")
+    .asObject<Any>()
+    .enqueue { result ->
+        println(result?.data)
+    }
+```
+
+---
+
+# POST Request
+
+```kotlin
+val json = """
+{
+   "name": "Sinem",
+   "job": "developer"
+}
+""".trimIndent()
+
+val body = NetraRequestBody.create(json)
+
+client.post("/users", body)
+    .asObject<Any>()
+    .enqueue { result ->
+        println(result?.statusCode)
+    }
+```
+
+---
+
+# PUT Request
+
+```kotlin
+client.put("/users/1", body)
+    .asObject<Any>()
+    .enqueue { result ->
+        println(result?.statusCode)
+    }
+```
+
+---
+
+# PATCH Request
+
+```kotlin
+client.patch("/users/1", body)
+    .asObject<Any>()
+    .enqueue { result ->
+        println(result?.statusCode)
+    }
+```
+
+---
+
+# DELETE Request
+
+```kotlin
+client.delete("/users/1")
+    .asObject<Any>()
+    .enqueue { result ->
+        println(result?.statusCode)
+    }
+```
+
+---
+
+# Synchronous Request
+
+```kotlin
+val response = client.get("/users")
+    .asObject<Any>()
+    .execute()
+
+println(response.statusCode)
+```
+
+---
+
+# Cache Support
+
+## Enable Cache
+
+```kotlin
+client.get("/users")
+    .withCache(Cache())
+    .enqueue { result ->
+        println(result?.data)
+    }
+```
+
+---
+
+## Cache Events
+
+Netra provides detailed cache lifecycle events through observers.
+
+Available events:
+
+- `CacheHit`
+- `CacheMiss`
+- `CacheStored`
+- `CacheExpired`
+- `StaleCacheUsed`
+
+Example:
+
+```kotlin
+override fun onCacheChanged(event: CacheEvent) {
+    when(event) {
+        is CacheEvent.CacheHit -> {
+            Log.e("", "Cache hit")
+        }
+
+        is CacheEvent.CacheMiss -> {
+            Log.e("", "Cache miss")
+        }
+
+        is CacheEvent.CacheExpired -> {
+            Log.e("", "Cache expired")
+        }
+
+        is CacheEvent.StaleCacheUsed -> {
+            Log.e("", "Using stale cache")
+        }
+
+        is CacheEvent.CacheStored -> {
+            Log.e("", "Cache stored")
+        }
+    }
+}
+```
+
+---
+
+# Offline Support
+
+Netra can automatically queue requests while the device is offline.
+
+```kotlin
+client.get("/users")
+    .whenOffline(OfflinePolicyAction.QUEUE)
+```
+
+Available offline actions:
+
+| Action | Description |
+|---|---|
+| `QUEUE` | Stores request and retries later |
+| `USE_CACHE` | Uses cached response |
+| `THROW_ERROR` | Throws network error |
+
+---
+
+# Slow Network Strategies
+
+```kotlin
+client.get("/users")
+    .whenSlowNetwork(SlowNetworkPolicyAction.USE_CACHE)
+```
+
+Available actions:
+
+| Action | Description |
+|---|---|
+| `USE_CACHE` | Returns cache immediately |
+| `WAIT` | Waits for network response |
+| `THROW_ERROR` | Throws timeout/network error |
+
+---
+
+# Queue Events
+
+Netra exposes detailed queue lifecycle events.
+
+Available events:
+
+- `RequestQueued`
+- `QueuedRequestRestored`
+- `QueuedRequestExecuted`
+- `QueuedRequestFailed`
+
+Example:
+
+```kotlin
+override fun onQueueChanged(event: RequestQueuedEvent) {
+    when(event) {
+
+        is RequestQueuedEvent.RequestQueued -> {
+            Log.e("", "Request added to queue")
+        }
+
+        is RequestQueuedEvent.QueuedRequestRestored -> {
+            Log.e("", "Queued request restored")
+        }
+
+        is RequestQueuedEvent.QueuedRequestExecuted -> {
+            Log.e("", "Queued request executed")
+        }
+
+        is RequestQueuedEvent.QueuedRequestFailed -> {
+            Log.e("", "Queued request failed")
+        }
+    }
+}
+```
+
+---
+
+# Observers
+
+Attach observers to monitor request lifecycle events.
+
+```kotlin
+client.get("/users")
+    .addObserver(object : INetraObserver {
+
+        override fun onNetworkChanged(event: NetworkEvent) {
+            Log.e("", "Network changed")
+        }
+
+        override fun onCacheChanged(event: CacheEvent) {
+            Log.e("", "Cache event")
+        }
+
+        override fun onQueueChanged(event: RequestQueuedEvent) {
+            Log.e("", "Queue event")
+        }
+    })
+```
+
+---
+
+# Multipart Upload
+
+## Upload Image
+
+```kotlin
+val part = NetraPart.file(
+    name = "image",
+    fileName = "photo.jpg",
+    bytes = byteArray,
+    mimeType = "image/jpeg"
+)
+
+val body = NetraRequestBody.multipart(
+    listOf(part)
+)
+
+client.post("/upload", body)
+    .asObject<Any>()
+    .enqueue { result ->
+        println(result?.statusCode)
+    }
+```
+
+---
+
+# Download Image
+
+```kotlin
+client.get("/image")
+    .asObject<ByteArray>()
+    .enqueue { result ->
+
+        val bytes = result?.data?.get("data") as ByteArray
+
+        val bitmap = BitmapFactory.decodeByteArray(
+            bytes,
+            0,
+            bytes.size
+        )
+    }
+```
+
+---
+
+# Custom Headers
+
+## Global Headers
+
+```kotlin
+val client = NetraClient.Builder(applicationContext)
+    .addHeaders(
+        mapOf(
+            "Authorization" to "Bearer token"
+        )
+    )
+    .build()
+```
+
+---
+
+## Request Headers
+
+```kotlin
+client.get("/users")
+    .addHeaders(
+        mapOf(
+            "Custom-Header" to "value"
+        )
+    )
+```
+
+---
+
+# Converter Support
+
+## Kotlinx Serialization
+
+```kotlin
+val client = NetraClient.Builder(applicationContext)
+    .addConverterFactory(
+        NetraKotlinxConverter()
+    )
+    .build()
+```
+
+---
+
+# Circuit Breaker
+
+```kotlin
+val client = NetraClient.Builder(applicationContext)
+    .circuitBreaker()
+    .build()
+```
+
+---
+
+# Cancel Request
+
+```kotlin
+val request = client.get("/users")
+
+request.cancel()
+```
+
+---
+
+# Example Response
+
+```kotlin
+result?.statusCode
+result?.statusMessage
+result?.headers
+result?.data
+```
+
+---
+
+# Roadmap
+
+- [ ] Retry policies
+- [ ] WebSocket support
+- [ ] Logging interceptor
+- [ ] Rate limiting
+- [ ] Request deduplication
+- [ ] Metrics dashboard
+- [ ] Encryption layer
+
+---
+
+# Why Netra?
+
+Netra focuses on real-world mobile networking problems:
+
+- unreliable connections
+- offline-first architecture
+- slow networks
+- cache consistency
+- request recovery
+- developer observability
+
+Instead of only being an HTTP client, Netra aims to provide a resilient networking layer for modern Android applications.
+
+---
+
+# License
+
+```text
+MIT License
+```
