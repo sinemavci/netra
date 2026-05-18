@@ -119,10 +119,6 @@ class NetraClient private constructor(
                 return bitmap.size / 1024
             }
         }
-
-        internal lateinit var connectivityManager: ConnectivityManager
-            private set
-
         internal lateinit var client: OkHttpClient
             private set
 
@@ -165,30 +161,11 @@ class NetraClient private constructor(
         }
 
         internal fun initCompanion(context: Context) {
-            if (!::connectivityManager.isInitialized) {
-                connectivityManager = context.applicationContext
-                    .getSystemService(ConnectivityManager::class.java)
-            }
             if (!::client.isInitialized) {
                 client = OkHttpClient().newBuilder().addInterceptor(BaseInterceptor()).build()
             }
 
             OfflineQueueManager.init(context.applicationContext)
-            val networkRequest = NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                .build()
-
-            val networkCallback = object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) {
-                    notifyNetworkEvent(NetworkEvent.ConnectionRestored)
-                    OfflineQueueManager.processQueue(client = client)
-                    super.onAvailable(network)
-                }
-            }
-
-            connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
         }
     }
 }

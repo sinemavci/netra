@@ -49,18 +49,8 @@ class NetraCall<T>(
     private var slowNetworkPolicyAction: SlowNetworkPolicyAction? = null
     private var retriesCount: Int? = null
     var executor: ExecutorService? = Executors.newSingleThreadExecutor()
+    private var connectivityManager = NetraConnectivityManager.getInstance(context)
 
-
-    @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
-    private fun isConnected(): Boolean {
-        val network = NetraClient.connectivityManager.activeNetwork
-        val caps = NetraClient.connectivityManager.getNetworkCapabilities(network)
-        val isConnectedResult = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) ?: false
-        if (!isConnectedResult) {
-            NetraClient.notifyNetworkEvent(NetworkEvent.Offline)
-        }
-        return isConnectedResult
-    }
 
     fun withCache(cache: Cache): NetraCall<T> {
         cacheManager.cache = cache
@@ -111,23 +101,6 @@ class NetraCall<T>(
             @Suppress("UNCHECKED_CAST")
             return byteArray as T
         }
-    }
-
-    private fun getNetworkSpeedState(): NetworkSeverity {
-        val network =
-            NetraClient.connectivityManager.activeNetwork ?: return NetworkSeverity.NORMAL
-        val caps = NetraClient.connectivityManager.getNetworkCapabilities(network)
-            ?: return NetworkSeverity.NORMAL
-
-        val result = when {
-            !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED) -> {
-                NetraClient.notifyNetworkEvent(NetworkEvent.SlowNetwork)
-                return NetworkSeverity.DEGRADED
-            }
-
-            else -> NetworkSeverity.NORMAL
-        }
-        return result
     }
 
     private fun handleOnFailure(call: Call, e: IOException, callback: (NetraResponse?) -> Unit) {
@@ -354,11 +327,11 @@ class NetraCall<T>(
 
     fun execute(): NetraResponse {
         lateinit var netraResponse: NetraResponse
-        val networkSeverity = getNetworkSpeedState()
+        val networkSeverity = connectivityManager.getNetworkSpeedState()
         val request = getRequest(null)
         val call = client.newCall(request)
 
-        if (isConnected()) {
+        if (connectivityManager.isConnected()) {
             if (networkSeverity == NetworkSeverity.NORMAL) {
                 netraResponse = executeCommand(call)
             } else {
@@ -453,8 +426,8 @@ class NetraCall<T>(
     fun enqueue(callback: (NetraResponse?) -> Unit) {
         val reporter = StatusReporter(callback)
         val request = getRequest(reporter)
-        val networkSeverity = getNetworkSpeedState()
-        val isConnected = isConnected()
+        val networkSeverity = connectivityManager.getNetworkSpeedState()
+        val isConnected = connectivityManager.isConnected()
 
         if (isConnected) {
             if (networkSeverity == NetworkSeverity.NORMAL) {
