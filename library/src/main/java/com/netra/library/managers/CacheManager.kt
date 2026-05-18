@@ -50,7 +50,7 @@ internal class CacheManager(val context: Context, val command: Command) {
             cacheFile.createNewFile()
             cacheFile.writeBytes(bodyBytes)
             NetraClient.memoryCache.put(command.url, bodyBytes)
-            NetraClient.notifyCacheEvent(
+            ObserverManager.notifyCacheEvent(
                 CacheEvent.CacheStored(
                     key = "",
                     ageMs = getCacheAgeByMs(cacheFile),
@@ -66,7 +66,7 @@ internal class CacheManager(val context: Context, val command: Command) {
         val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
         if (cacheFile.exists() && cache != null) {
             cacheValue = cacheFile.readBytes()
-            NetraClient.notifyCacheEvent(
+            ObserverManager.notifyCacheEvent(
                 CacheEvent.StaleCacheUsed(
                     key = "",
                     ttlMs = cache?.ttl ?: 600000,
@@ -75,7 +75,7 @@ internal class CacheManager(val context: Context, val command: Command) {
                 )
             )
         } else {
-            NetraClient.notifyCacheEvent(
+            ObserverManager.notifyCacheEvent(
                 CacheEvent.CacheMiss(
                     key = "",
                 )
@@ -90,7 +90,7 @@ internal class CacheManager(val context: Context, val command: Command) {
         val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
         val shouldUseCache = shouldUseCache(cacheFile, cache?.ttl ?: 600000)
         if (cacheFile.exists() && !shouldUseCache) {
-            NetraClient.notifyCacheEvent(
+            ObserverManager.notifyCacheEvent(
                 CacheEvent.CacheExpired(
                     key = "",
                     ttlMs = cache?.ttl ?: 600000,
@@ -99,14 +99,14 @@ internal class CacheManager(val context: Context, val command: Command) {
                 )
             )
         } else if (!cacheFile.exists()) {
-            NetraClient.notifyCacheEvent(
+            ObserverManager.notifyCacheEvent(
                 CacheEvent.CacheMiss(
                     key = "",
                 )
             )
         } else if (cacheFile.exists() && shouldUseCache) {
             cacheValue = cacheFile.readBytes()
-            NetraClient.notifyCacheEvent(
+            ObserverManager.notifyCacheEvent(
                 CacheEvent.CacheHit(
                     key = "",
                     ttlMs = cache?.ttl ?: 600000,
@@ -114,7 +114,7 @@ internal class CacheManager(val context: Context, val command: Command) {
                 )
             )
         } else {
-            NetraClient.notifyCacheEvent(
+            ObserverManager.notifyCacheEvent(
                 CacheEvent.CacheMiss(
                     key = "",
                 )

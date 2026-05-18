@@ -1,22 +1,14 @@
 package com.netra.library
 
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
-import android.util.Log
 import androidx.collection.LruCache
 import com.netra.library.converter.IConverter
 import com.netra.library.enums.Command
 import com.netra.library.interceptors.BaseInterceptor
 import com.netra.library.interceptors.CircuitBreakerInterceptor
 import com.netra.library.managers.OfflineQueueManager
-import com.netra.library.observers.CacheEvent
+import com.netra.library.managers.ObserverManager
 import com.netra.library.observers.INetraObserver
-import com.netra.library.observers.NetworkEvent
-import com.netra.library.observers.RequestQueuedEvent
-import com.netra.library.utils.EventDispatcher
 import okhttp3.OkHttpClient
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
@@ -32,13 +24,13 @@ class NetraClient private constructor(
     var id: String = UUID.randomUUID().mostSignificantBits.toString()
 
     fun addObserver(observer: INetraObserver) {
-        if (observer !in observers) {
-            observers.add(observer)
+        if (observer !in ObserverManager.observers) {
+            ObserverManager.observers.add(observer)
         }
     }
 
     fun removeObserver(observer: INetraObserver) {
-        observers.remove(observer)
+        ObserverManager.observers.remove(observer)
     }
     data class Builder(
         val context: Context,
@@ -121,45 +113,6 @@ class NetraClient private constructor(
         }
         internal lateinit var client: OkHttpClient
             private set
-
-        internal val observers = mutableListOf<INetraObserver>()
-
-        internal fun notifyNetworkEvent(event: NetworkEvent) {
-            EventDispatcher.runOnMain {
-                observers.toTypedArray().forEach { observer ->
-                    try {
-                        observer.onNetworkChanged(event)
-                    } catch (e: Exception) {
-                        Log.e("MapRays", "Error in observer: ${e.message}", e)
-                    }
-                }
-            }
-        }
-
-        internal fun notifyCacheEvent(event: CacheEvent) {
-            EventDispatcher.runOnMain {
-                observers.toTypedArray().forEach { observer ->
-                    try {
-                        observer.onCacheChanged(event)
-                    } catch (e: Exception) {
-                        Log.e("MapRays", "Error in observer: ${e.message}", e)
-                    }
-                }
-            }
-        }
-
-        internal fun notifyQueuedEvent(event: RequestQueuedEvent) {
-            EventDispatcher.runOnMain {
-                observers.toTypedArray().forEach { observer ->
-                    try {
-                        observer.onQueueChanged(event)
-                    } catch (e: Exception) {
-                        Log.e("MapRays", "Error in observer: ${e.message}", e)
-                    }
-                }
-            }
-        }
-
         internal fun initCompanion(context: Context) {
             if (!::client.isInitialized) {
                 client = OkHttpClient().newBuilder().addInterceptor(BaseInterceptor()).build()

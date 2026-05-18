@@ -5,11 +5,10 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import androidx.annotation.RequiresPermission
-import com.netra.library.NetraClient
 import com.netra.library.NetraClient.Companion.client
-import com.netra.library.NetraClient.Companion.notifyNetworkEvent
 import com.netra.library.enums.NetworkSeverity
 import com.netra.library.managers.OfflineQueueManager
+import com.netra.library.managers.ObserverManager
 import com.netra.library.observers.NetworkEvent
 
 internal class NetraConnectivityManager private constructor(
@@ -25,7 +24,7 @@ internal class NetraConnectivityManager private constructor(
         val isConnectedResult =
             caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) ?: false
         if (!isConnectedResult) {
-            notifyNetworkEvent(NetworkEvent.Offline)
+            ObserverManager.notifyNetworkEvent(NetworkEvent.Offline)
         }
         return isConnectedResult
     }
@@ -37,7 +36,7 @@ internal class NetraConnectivityManager private constructor(
 
         val result = when {
             !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED) -> {
-                notifyNetworkEvent(NetworkEvent.SlowNetwork)
+                ObserverManager.notifyNetworkEvent(NetworkEvent.SlowNetwork)
                 return NetworkSeverity.DEGRADED
             }
 
@@ -55,7 +54,7 @@ internal class NetraConnectivityManager private constructor(
 
         val networkCallback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                notifyNetworkEvent(NetworkEvent.ConnectionRestored)
+                ObserverManager.notifyNetworkEvent(NetworkEvent.ConnectionRestored)
                 OfflineQueueManager.processQueue(client = client)
                 super.onAvailable(network)
             }

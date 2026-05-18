@@ -1,10 +1,7 @@
 # Netra Android SDK
 
-A lightweight and developer-friendly Android networking SDK with built-in caching, offline queueing, slow network strategies, observers, multipart upload support, and Kotlin-first APIs.
-
----
-
-## Features
+A flexible Android networking SDK built with Kotlin.
+Netra provides:
 
 - ⚡ Simple and fluent API
 - 📦 GET, POST, PUT, PATCH, DELETE support
@@ -19,6 +16,7 @@ A lightweight and developer-friendly Android networking SDK with built-in cachin
 - 🔥 Circuit breaker support
 - 🧵 Coroutine-friendly
 - 🛜 Custom headers support
+---
 
 # Basic Usage
 

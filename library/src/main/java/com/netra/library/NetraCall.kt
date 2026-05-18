@@ -1,12 +1,9 @@
 package com.netra.library
 
-import android.Manifest
 import android.content.Context
-import android.net.NetworkCapabilities
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import androidx.annotation.RequiresPermission
 import com.google.gson.Gson
 import com.netra.library.converter.IConverter
 import com.netra.library.enums.Command
@@ -15,10 +12,10 @@ import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
 import com.netra.library.interceptors.RetryInterceptor
 import com.netra.library.managers.CacheManager
+import com.netra.library.managers.ObserverManager
 import com.netra.library.managers.CancelRequestManager
 import com.netra.library.managers.OfflineQueueManager
 import com.netra.library.observers.INetraObserver
-import com.netra.library.observers.NetworkEvent
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Headers
@@ -73,14 +70,14 @@ class NetraCall<T>(
     }
 
     fun addObserver(observer: INetraObserver): NetraCall<T> {
-        if (observer !in NetraClient.observers) {
-            NetraClient.observers.add(observer)
+        if (observer !in ObserverManager.observers) {
+            ObserverManager.observers.add(observer)
         }
         return this
     }
 
     fun removeObserver(observer: INetraObserver): NetraCall<T> {
-        NetraClient.observers.remove(observer)
+        ObserverManager.observers.remove(observer)
         return this
     }
 
