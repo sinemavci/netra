@@ -20,20 +20,6 @@ A lightweight and developer-friendly Android networking SDK with built-in cachin
 - 🧵 Coroutine-friendly
 - 🛜 Custom headers support
 
----
-
-# Installation
-
-## Gradle
-
-```kotlin
-dependencies {
-    implementation("com.netra:netra:x.x.x")
-}
-```
-
----
-
 # Basic Usage
 
 ## Create Client
@@ -54,6 +40,11 @@ client.get("/users")
     .enqueue { result ->
         println(result?.data)
     }
+```
+or
+```kotlin
+val request = client.get("/users").asObject<Any>()
+val response = request.execute()
 ```
 
 ---
@@ -143,15 +134,15 @@ client.get("/users")
 
 ## Cache Events
 
-Netra provides detailed cache lifecycle events through observers.
+Netra provides detailed cache lifecycle events to help developers monitor cache behavior and debug networking flows.
 
-Available events:
-
-- `CacheHit`
-- `CacheMiss`
-- `CacheStored`
-- `CacheExpired`
-- `StaleCacheUsed`
+| Event | Description | Typical Scenario |
+|---|---|---|
+| `CacheHit` | Triggered when valid cached data is found and returned successfully. | User opens a screen and data is loaded directly from cache without a network request. |
+| `CacheMiss` | Triggered when no cache entry exists for the requested resource. | First request to an endpoint before any cache has been stored. |
+| `CacheStored` | Triggered after a successful network response is saved into cache storage. | Fresh API response is persisted for future offline or fast access usage. |
+| `CacheExpired` | Triggered when cached data exists but its expiration time has passed. | SDK checks cache age and determines it is no longer valid. |
+| `StaleCacheUsed` | Triggered when expired cache data is intentionally returned as a fallback strategy. | Network is slow/offline and SDK serves expired cache to improve UX. |
 
 Example:
 
@@ -401,14 +392,9 @@ result?.data
 
 # Roadmap
 
-- [ ] Retry policies
 - [ ] WebSocket support
 - [ ] Logging interceptor
-- [ ] Rate limiting
 - [ ] Request deduplication
-- [ ] Metrics dashboard
-- [ ] Encryption layer
-
 ---
 
 # Why Netra?

@@ -198,7 +198,7 @@ class MainActivity : ComponentActivity() {
                 }
             })
 
-        CoroutineScope(Dispatchers.IO).launch {
+           val response = request.execute()
 
             request.enqueue { result ->
                 result?.headers?.forEach { string, string1 ->
@@ -208,7 +208,6 @@ class MainActivity : ComponentActivity() {
                     "result is success",
                     "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
                 )
-            }
 //
         }
 //        Handler(Looper.getMainLooper()).postDelayed({
