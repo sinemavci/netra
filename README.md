@@ -183,11 +183,13 @@ client.get("/users")
 
 Available offline actions:
 
-| Action | Description |
-|---|---|
-| `QUEUE` | Stores request and retries later |
-| `USE_CACHE` | Uses cached response |
-| `THROW_ERROR` | Throws network error |
+| Action | Description                                        |
+|---|----------------------------------------------------|
+| `QUEUE` | Stores request and retries later                   |
+| `USE_CACHE` | Uses cached response                               |
+| `RETRY` | Client send request retries times until successful |
+| `THROW_ERROR` | Throws network error                               |
+
 
 ---
 
@@ -204,7 +206,7 @@ Available actions:
 |---|---|
 | `USE_CACHE` | Returns cache immediately |
 | `WAIT` | Waits for network response |
-| `THROW_ERROR` | Throws timeout/network error |
+| `TIMEOUT` | Throws timeout/network error |
 
 ---
 

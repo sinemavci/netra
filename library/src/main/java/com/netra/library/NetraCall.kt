@@ -278,20 +278,15 @@ class NetraCall<T>(
         return _response
     }
 
-    private fun handleTimeoutPolicy(request: Request): NetraResponse {
-        Log.e("", "slow network policy uses TIMEOUT")
+    private fun handleTimeoutPolicy(): OkHttpClient {
         val shortClient = client.newBuilder()
-            .connectTimeout(
-                timeout = (slowNetworkPolicyAction as SlowNetworkPolicyAction.TIMEOUT).timeout,
-                TimeUnit.SECONDS
-            )
-            .readTimeout(
+            .callTimeout(
                 timeout = (slowNetworkPolicyAction as SlowNetworkPolicyAction.TIMEOUT).timeout,
                 TimeUnit.SECONDS
             )
             .build()
 
-        return executeCommand(shortClient.newCall(request))
+        return shortClient
     }
 
     private fun handleWaitPolicy(request: Request): NetraResponse {
@@ -348,7 +343,8 @@ class NetraCall<T>(
                     }
 
                     is SlowNetworkPolicyAction.TIMEOUT -> {
-                       netraResponse = handleTimeoutPolicy(request)
+                        val shortClient = handleTimeoutPolicy()
+                        netraResponse = executeCommand(shortClient.newCall(request))
                     }
 
                     is SlowNetworkPolicyAction.WAIT -> {
@@ -450,12 +446,7 @@ class NetraCall<T>(
                     }
 
                     is SlowNetworkPolicyAction.TIMEOUT -> {
-                        val shortClient = client.newBuilder()
-                            .readTimeout(
-                                timeout = (slowNetworkPolicyAction as SlowNetworkPolicyAction.TIMEOUT).timeout,
-                                TimeUnit.SECONDS
-                            )
-                            .build()
+                        val shortClient = handleTimeoutPolicy()
                         val shortCall = shortClient.newCall(request)
                         enqueueCommand(shortCall, callback)
                         return
