@@ -134,35 +134,35 @@ class MainActivity : ComponentActivity() {
                         is CacheEvent.StaleCacheUsed -> {
                             Log.e(
                                 "",
-                                "request CacheEvent.StaleCacheUsed observer here: ${event.key} ${event.ageMs} ${event.expiredByMs}}"
+                                "StaleCacheUsed: ${event.key} ${event.ageMs} ${event.expiredByMs}}"
                             )
                         }
 
                         is CacheEvent.CacheMiss -> {
                             Log.e(
                                 "",
-                                "request CacheEvent.CacheMiss observer here: ${event.key}"
+                                "CacheMiss: ${event.key}"
                             )
                         }
 
                         is CacheEvent.CacheExpired -> {
                             Log.e(
                                 "",
-                                "request CacheEvent.CacheExpired observer here: ${event.key} ${event.ageMs} ${event.expiredByMs}}"
+                                "CacheExpired: ${event.key} ${event.ageMs} ${event.expiredByMs}}"
                             )
                         }
 
                         is CacheEvent.CacheStored -> {
                             Log.e(
                                 "",
-                                "request CacheEvent.CacheStored observer here: ${event.key} ${event.ageMs}}"
+                                "CacheStored: ${event.key} ${event.ageMs}}"
                             )
                         }
 
                         is CacheEvent.CacheHit -> {
                             Log.e(
                                 "",
-                                "request CacheEvent.CacheHit observer here: ${event.key} ${event.ageMs}"
+                                "CacheHit: ${event.key} ${event.ageMs}"
                             )
                         }
                     }
@@ -173,25 +173,25 @@ class MainActivity : ComponentActivity() {
                         is RequestQueuedEvent.RequestQueued -> {
                             Log.e(
                                 "",
-                                "request RequestQueuedEvent.RequestQueued observer here: ${event.key} queueOrder: ${event.queueOrder}"
+                                "RequestQueued: ${event.key} queueOrder: ${event.queueOrder}"
                             )
                         }
                         is RequestQueuedEvent.QueuedRequestRestored -> {
                             Log.e(
                                 "",
-                                "request RequestQueuedEvent.QueuedRequestRestored observer here: ${event.key}"
+                                "QueuedRequestRestored: ${event.key}"
                             )
                         }
                         is RequestQueuedEvent.QueuedRequestExecuted -> {
                             Log.e(
                                 "",
-                                "request RequestQueuedEvent.QueuedRequestExecuted observer here: ${event.key} statusCode: ${event.response.statusCode}"
+                                "QueuedRequestExecuted: ${event.key} statusCode: ${event.response.statusCode}"
                             )
                         }
                         is RequestQueuedEvent.QueuedRequestFailed -> {
                             Log.e(
                                 "",
-                                "request RequestQueuedEvent.QueuedRequestFailed observer here: ${event.key}"
+                                "QueuedRequestFailed: ${event.key}"
                             )
                         }
                     }

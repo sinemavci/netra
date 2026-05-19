@@ -175,50 +175,73 @@ client.get("/users")
     .addObserver(object : INetraObserver {
 
         override fun onNetworkChanged(event: NetworkEvent) {
-            Log.e("", "Network changed")
+            Log.e("", "Network changed: $event")
         }
 
         override fun onCacheChanged(event: CacheEvent) {
-            when(event) {
-                is CacheEvent.CacheHit -> {
-                    Log.e("", "Cache hit")
+            when (event) {
+                is CacheEvent.StaleCacheUsed -> {
+                    Log.e(
+                        "",
+                        "StaleCacheUsed: ${event.key} ${event.ageMs} ${event.expiredByMs}}"
+                    )
                 }
 
                 is CacheEvent.CacheMiss -> {
-                    Log.e("", "Cache miss")
+                    Log.e(
+                        "",
+                        "CacheMiss: ${event.key}"
+                    )
                 }
 
                 is CacheEvent.CacheExpired -> {
-                    Log.e("", "Cache expired")
-                }
-
-                is CacheEvent.StaleCacheUsed -> {
-                    Log.e("", "Using stale cache")
+                    Log.e(
+                        "",
+                        "CacheExpired: ${event.key} ${event.ageMs} ${event.expiredByMs}}"
+                    )
                 }
 
                 is CacheEvent.CacheStored -> {
-                    Log.e("", "Cache stored")
+                    Log.e(
+                        "",
+                        "CacheStored: ${event.key} ${event.ageMs}}"
+                    )
+                }
+
+                is CacheEvent.CacheHit -> {
+                    Log.e(
+                        "",
+                        "CacheHit: ${event.key} ${event.ageMs}"
+                    )
                 }
             }
         }
 
         override fun onQueueChanged(event: RequestQueuedEvent) {
-            when(event) {
-
+            when (event) {
                 is RequestQueuedEvent.RequestQueued -> {
-                    Log.e("", "Request added to queue")
+                    Log.e(
+                        "",
+                        "RequestQueued: ${event.key} queueOrder: ${event.queueOrder}"
+                    )
                 }
-
                 is RequestQueuedEvent.QueuedRequestRestored -> {
-                    Log.e("", "Queued request restored")
+                    Log.e(
+                        "",
+                        "QueuedRequestRestored: ${event.key}"
+                    )
                 }
-
                 is RequestQueuedEvent.QueuedRequestExecuted -> {
-                    Log.e("", "Queued request executed")
+                    Log.e(
+                        "",
+                        "QueuedRequestExecuted: ${event.key} statusCode: ${event.response.statusCode}"
+                    )
                 }
-
                 is RequestQueuedEvent.QueuedRequestFailed -> {
-                    Log.e("", "Queued request failed")
+                    Log.e(
+                        "",
+                        "QueuedRequestFailed: ${event.key}"
+                    )
                 }
             }
         }
