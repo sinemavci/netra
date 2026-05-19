@@ -202,11 +202,11 @@ client.get("/users")
 
 Available actions:
 
-| Action | Description |
-|---|---|
-| `USE_CACHE` | Returns cache immediately |
-| `WAIT` | Waits for network response |
-| `TIMEOUT` | Throws timeout/network error |
+| Action | Description                                                                                                                          |
+|---|--------------------------------------------------------------------------------------------------------------------------------------|
+| `USE_CACHE` | Returns cache immediately                                                                                                            |
+| `WAIT` | Waits for network response                                                                                                           |
+| `TIMEOUT` | Set callTimeout to client and waits until timeout. If the client can not continue receive data within timeout duration, throws error |
 
 ---
 
