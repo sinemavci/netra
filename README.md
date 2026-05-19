@@ -128,50 +128,6 @@ client.get("/users")
     }
 ```
 
----
-
-## Cache Events
-
-Netra provides detailed cache lifecycle events to help developers monitor cache behavior and debug networking flows.
-
-| Event | Description | Typical Scenario |
-|---|---|---|
-| `CacheHit` | Triggered when valid cached data is found and returned successfully. | User opens a screen and data is loaded directly from cache without a network request. |
-| `CacheMiss` | Triggered when no cache entry exists for the requested resource. | First request to an endpoint before any cache has been stored. |
-| `CacheStored` | Triggered after a successful network response is saved into cache storage. | Fresh API response is persisted for future offline or fast access usage. |
-| `CacheExpired` | Triggered when cached data exists but its expiration time has passed. | SDK checks cache age and determines it is no longer valid. |
-| `StaleCacheUsed` | Triggered when expired cache data is intentionally returned as a fallback strategy. | Network is slow/offline and SDK serves expired cache to improve UX. |
-
-Example:
-
-```kotlin
-override fun onCacheChanged(event: CacheEvent) {
-    when(event) {
-        is CacheEvent.CacheHit -> {
-            Log.e("", "Cache hit")
-        }
-
-        is CacheEvent.CacheMiss -> {
-            Log.e("", "Cache miss")
-        }
-
-        is CacheEvent.CacheExpired -> {
-            Log.e("", "Cache expired")
-        }
-
-        is CacheEvent.StaleCacheUsed -> {
-            Log.e("", "Using stale cache")
-        }
-
-        is CacheEvent.CacheStored -> {
-            Log.e("", "Cache stored")
-        }
-    }
-}
-```
-
----
-
 # Offline Support
 
 Netra can automatically queue requests while the device is offline.
@@ -210,44 +166,6 @@ Available actions:
 
 ---
 
-# Queue Events
-
-Netra exposes detailed queue lifecycle events.
-
-Available events:
-
-- `RequestQueued`
-- `QueuedRequestRestored`
-- `QueuedRequestExecuted`
-- `QueuedRequestFailed`
-
-Example:
-
-```kotlin
-override fun onQueueChanged(event: RequestQueuedEvent) {
-    when(event) {
-
-        is RequestQueuedEvent.RequestQueued -> {
-            Log.e("", "Request added to queue")
-        }
-
-        is RequestQueuedEvent.QueuedRequestRestored -> {
-            Log.e("", "Queued request restored")
-        }
-
-        is RequestQueuedEvent.QueuedRequestExecuted -> {
-            Log.e("", "Queued request executed")
-        }
-
-        is RequestQueuedEvent.QueuedRequestFailed -> {
-            Log.e("", "Queued request failed")
-        }
-    }
-}
-```
-
----
-
 # Observers
 
 Attach observers to monitor request lifecycle events.
@@ -261,14 +179,82 @@ client.get("/users")
         }
 
         override fun onCacheChanged(event: CacheEvent) {
-            Log.e("", "Cache event")
+            when(event) {
+                is CacheEvent.CacheHit -> {
+                    Log.e("", "Cache hit")
+                }
+
+                is CacheEvent.CacheMiss -> {
+                    Log.e("", "Cache miss")
+                }
+
+                is CacheEvent.CacheExpired -> {
+                    Log.e("", "Cache expired")
+                }
+
+                is CacheEvent.StaleCacheUsed -> {
+                    Log.e("", "Using stale cache")
+                }
+
+                is CacheEvent.CacheStored -> {
+                    Log.e("", "Cache stored")
+                }
+            }
         }
 
         override fun onQueueChanged(event: RequestQueuedEvent) {
-            Log.e("", "Queue event")
+            when(event) {
+
+                is RequestQueuedEvent.RequestQueued -> {
+                    Log.e("", "Request added to queue")
+                }
+
+                is RequestQueuedEvent.QueuedRequestRestored -> {
+                    Log.e("", "Queued request restored")
+                }
+
+                is RequestQueuedEvent.QueuedRequestExecuted -> {
+                    Log.e("", "Queued request executed")
+                }
+
+                is RequestQueuedEvent.QueuedRequestFailed -> {
+                    Log.e("", "Queued request failed")
+                }
+            }
         }
     })
 ```
+
+## Cache Events
+
+Netra provides detailed cache lifecycle events to help developers monitor cache behavior and debug networking flows.
+
+| Event | Description | Typical Scenario |
+|---|---|---|
+| `CacheHit` | Triggered when valid cached data is found and returned successfully. | User opens a screen and data is loaded directly from cache without a network request. |
+| `CacheMiss` | Triggered when no cache entry exists for the requested resource. | First request to an endpoint before any cache has been stored. |
+| `CacheStored` | Triggered after a successful network response is saved into cache storage. | Fresh API response is persisted for future offline or fast access usage. |
+| `CacheExpired` | Triggered when cached data exists but its expiration time has passed. | SDK checks cache age and determines it is no longer valid. |
+| `StaleCacheUsed` | Triggered when expired cache data is intentionally returned as a fallback strategy. | Network is slow/offline and SDK serves expired cache to improve UX. |
+
+## Queue Events
+Netra exposes detailed queue lifecycle events.
+
+Available events:
+
+- `RequestQueued`
+- `QueuedRequestRestored`
+- `QueuedRequestExecuted`
+- `QueuedRequestFailed`
+
+## Network Events
+Netra exposes detailed connection lifecycle events.
+
+Available events:
+
+- `Offline`
+- `SlowNetwork`
+- `ConnectionRestored`
 
 ---
 
