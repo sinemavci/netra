@@ -317,6 +317,38 @@ class NetraCall<T>(
         return _netraResponse
     }
 
+    fun executeStream(onStreamReady: (java.io.InputStream) -> Unit, onFailure: (Exception) -> Unit) {
+        val networkSeverity = connectivityManager.getNetworkSpeedState()
+        val request = getRequest(null)
+        val call = client.newCall(request)
+
+        if (connectivityManager.isConnected()) {
+            if (networkSeverity == NetworkSeverity.NORMAL) {
+                executor!!.execute {
+                    try {
+                        val response = call.execute()
+                        if (response.isSuccessful) {
+                            val inputStream = response.body?.byteStream()
+                            if (inputStream != null) {
+                                inputStream.use { stream ->
+                                    onStreamReady(stream)
+                                }
+                            } else {
+                                onFailure(IOException("Response body is empty"))
+                            }
+                        } else {
+                            onFailure(IOException("Server error: ${response.code}"))
+                        }
+                    } catch (e: Exception) {
+                        Log.e("", "error here: ${e}")
+                        onFailure(e)
+                    }
+                }
+            }
+            //todo: else
+        }
+    }
+
     fun execute(): NetraResponse {
         lateinit var netraResponse: NetraResponse
         val networkSeverity = connectivityManager.getNetworkSpeedState()
@@ -541,3 +573,5 @@ class NetraCall<T>(
         }
     }
 }
+
+// todo: when offline or slow network situations, how stream execute manage?

@@ -86,9 +86,27 @@ class MainActivity : ComponentActivity() {
             .asObject<ByteArray>()
             .withCache(Cache(null))
             .whenOffline(OfflinePolicyAction.USE_CACHE)
-            .enqueue { result ->
-                 _bitmap.value = BitmapFactory.decodeByteArray(result?.data?.get("data") as ByteArray, 0, (result.data?.get("data") as ByteArray).size)
-            }
+            .executeStream(
+                onStreamReady = { inputStream ->
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+                    var response =  ByteArray(0)
+
+                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                        val chunk = buffer.copyOfRange(0, bytesRead)
+                        response = response.plus(chunk)
+                        Log.d("NetraSDK", "Received a native chunk of size: ${chunk.size} bytes")
+                    }
+                    Log.d("NetraSDK", "Stream fully consumed auto-closed.")
+                    _bitmap.value = BitmapFactory.decodeByteArray(response, 0, response.size)
+                },
+                onFailure = { exception ->
+                    Log.e("NetraSDK", "Streaming failed: ${exception.message}")
+                }
+            )
+//            .enqueue { result ->
+//                 _bitmap.value = BitmapFactory.decodeByteArray(result?.data?.get("data") as ByteArray, 0, (result.data?.get("data") as ByteArray).size)
+//            }
     }
 
     fun handlePostImage() {
