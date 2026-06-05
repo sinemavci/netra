@@ -53,6 +53,8 @@ data class Repo(
 class MainActivity : ComponentActivity() {
     var _bitmap = mutableStateOf<Bitmap?>(null)
 
+    private lateinit var client: NetraClient
+
     val pickImage = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
@@ -124,16 +126,16 @@ class MainActivity : ComponentActivity() {
         }
     }
     fun handleGet() {
-        val client = NetraClient.Builder(applicationContext)
-            .baseUrl("http://10.0.2.2:3001")
-            .circuitBreaker()
-            .addHeaders(mapOf("headercustom1" to "custom"))
-            .addConverterFactory(
-                NetraKotlinxConverter()
-            )
-            .build()
+//        val client = NetraClient.Builder(applicationContext)
+//            .baseUrl("http://10.0.2.2:3001")
+//            .circuitBreaker()
+//            .addHeaders(mapOf("headercustom1" to "custom"))
+//            .addConverterFactory(
+//                NetraKotlinxConverter()
+//            )
+//            .build()
 
-        val request = client.get("/?status=200&delay=2000")
+        val request = client!!.get("/?status=200&delay=6000")
             .slowMode()
             .addHeaders(mapOf("headercustom2" to "custom"))
             .asObject<Any>()
@@ -215,8 +217,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             })
-
-           val response = request.execute()
 
             request.enqueue { result ->
                 result?.headers?.forEach { string, string1 ->
@@ -327,6 +327,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        client = NetraClient.Builder(applicationContext)
+            .baseUrl("http://10.0.2.2:3001")
+            .cancelWhenDestroyed()
+            .build()
         enableEdgeToEdge()
         setContent {
             NetraTheme {

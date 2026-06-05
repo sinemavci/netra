@@ -378,6 +378,16 @@ val client = NetraClient.Builder(applicationContext)
 
 ---
 
+# Cancel Support When Activity Destroyed
+
+```kotlin
+val client = NetraClient.Builder(applicationContext)
+    .cancelWhenDestroyed()
+    .build()
+```
+
+---
+
 # Cancel Request
 
 ```kotlin

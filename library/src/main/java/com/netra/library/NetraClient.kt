@@ -1,11 +1,13 @@
 package com.netra.library
 
+import android.app.Application
 import android.content.Context
 import androidx.collection.LruCache
 import com.netra.library.converter.IConverter
 import com.netra.library.enums.Command
 import com.netra.library.interceptors.BaseInterceptor
 import com.netra.library.interceptors.CircuitBreakerInterceptor
+import com.netra.library.managers.LifecycleCallbacks
 import com.netra.library.managers.OfflineQueueManager
 import com.netra.library.managers.ObserverManager
 import com.netra.library.observers.INetraObserver
@@ -20,6 +22,7 @@ class NetraClient private constructor(
     var baseUrl: String? = null,
     var converter: IConverter? = null,
     var headers: Map<String, String>,
+    var isCancelWhenDestroyed: Boolean = false,
 ) {
     var id: String = UUID.randomUUID().mostSignificantBits.toString()
 
@@ -32,11 +35,13 @@ class NetraClient private constructor(
     fun removeObserver(observer: INetraObserver) {
         ObserverManager.observers.remove(observer)
     }
+
     data class Builder(
         val context: Context,
         var baseUrl: String? = null,
         var converter: IConverter? = null,
         var headers: MutableMap<String, String> = mutableMapOf(),
+        var isCancelWhenDestroyed: Boolean = false,
     ) {
         fun baseUrl(url: String): Builder {
             this.baseUrl = url
@@ -49,7 +54,8 @@ class NetraClient private constructor(
         }
 
         fun circuitBreaker(failureThreshold: Int? = 5, retryDelayMs: Long? = 1000L): Builder {
-            client = OkHttpClient().newBuilder().addInterceptor(CircuitBreakerInterceptor(failureThreshold, retryDelayMs)).build()
+            client = OkHttpClient().newBuilder()
+                .addInterceptor(CircuitBreakerInterceptor(failureThreshold, retryDelayMs)).build()
             return this
         }
 
@@ -58,11 +64,16 @@ class NetraClient private constructor(
             return this
         }
 
+        fun cancelWhenDestroyed(): Builder {
+            this.isCancelWhenDestroyed = true
+            return this
+        }
+
         fun build(): NetraClient {
-            initCompanion(context)
+            initCompanion(context, isCancelWhenDestroyed)
 
             if (baseUrl != null) {
-                return NetraClient(context, baseUrl!!, converter, headers)
+                return NetraClient(context, baseUrl!!, converter, headers, isCancelWhenDestroyed)
             } else {
                 throw Exception("Base url not found!")
             }
@@ -74,11 +85,23 @@ class NetraClient private constructor(
     }
 
     fun post(path: String, requestBody: NetraRequestBody): RequestBuilder {
-        return RequestBuilder(context, Command.Post(baseUrl + path, requestBody), client, converter, headers)
+        return RequestBuilder(
+            context,
+            Command.Post(baseUrl + path, requestBody),
+            client,
+            converter,
+            headers
+        )
     }
 
     fun put(path: String, requestBody: NetraRequestBody): RequestBuilder {
-        return RequestBuilder(context, Command.Put(baseUrl + path, requestBody), client, converter, headers)
+        return RequestBuilder(
+            context,
+            Command.Put(baseUrl + path, requestBody),
+            client,
+            converter,
+            headers
+        )
     }
 
     fun patch(path: String, requestBody: NetraRequestBody): RequestBuilder {
@@ -113,12 +136,20 @@ class NetraClient private constructor(
         }
         internal lateinit var client: OkHttpClient
             private set
-        internal fun initCompanion(context: Context) {
+
+        internal fun initCompanion(context: Context, isCancelWhenDestroyed: Boolean) {
             if (!::client.isInitialized) {
                 client = OkHttpClient().newBuilder().addInterceptor(BaseInterceptor()).build()
             }
 
             OfflineQueueManager.init(context.applicationContext)
+
+            if (isCancelWhenDestroyed) {
+                val application = context.applicationContext as Application
+                application.registerActivityLifecycleCallbacks(
+                    LifecycleCallbacks()
+                )
+            }
         }
     }
 }

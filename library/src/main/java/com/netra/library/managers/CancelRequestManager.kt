@@ -6,10 +6,6 @@ import java.util.concurrent.ConcurrentHashMap
 object CancelRequestManager {
     private val activeCalls = ConcurrentHashMap<String, Call>()
 
-    fun getSources(): List<Call> {
-        return activeCalls.values.toList()
-    }
-
     fun add(url: String, call: Call) {
         activeCalls[url] = call
     }
@@ -26,6 +22,12 @@ object CancelRequestManager {
             true
         } else {
             false
+        }
+    }
+
+    fun cancelAll() {
+        for (call in activeCalls) {
+            cancel(call.key)
         }
     }
 }
