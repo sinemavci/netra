@@ -1,12 +1,12 @@
 package com.netra.library.managers
 
-import okhttp3.Call
+import com.netra.library.NetraCall
 import java.util.concurrent.ConcurrentHashMap
 
 object CancelRequestManager {
-    private val activeCalls = ConcurrentHashMap<String, Call>()
+    private val activeCalls = ConcurrentHashMap<String, NetraCall>()
 
-    fun add(url: String, call: Call) {
+    fun add(url: String, call: NetraCall) {
         activeCalls[url] = call
     }
 
@@ -15,9 +15,9 @@ object CancelRequestManager {
     }
 
     fun cancel(key: String): Boolean {
-        val call = activeCalls[key]
-        return if (call != null && !call.isCanceled()) {
-            call.cancel()
+        val netraCall = activeCalls[key]
+        return if (netraCall != null && !netraCall.call.isCanceled()) {
+            netraCall.call.cancel()
             activeCalls.remove(key)
             true
         } else {
