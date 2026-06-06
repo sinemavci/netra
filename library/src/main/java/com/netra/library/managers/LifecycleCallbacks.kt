@@ -15,9 +15,7 @@ class LifecycleCallbacks : Application.ActivityLifecycleCallbacks {
 
     override fun onActivityResumed(activity: Activity) {}
 
-    override fun onActivityPaused(activity: Activity) {
-        CancelRequestManager.cancelWhenDestroyed()
-    }
+    override fun onActivityPaused(activity: Activity) {}
 
     override fun onActivityStopped(activity: Activity) {}
 
