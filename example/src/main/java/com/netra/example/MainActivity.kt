@@ -88,6 +88,7 @@ class MainActivity : ComponentActivity() {
             .asObject<ByteArray>()
             .withCache(Cache(null))
             .whenOffline(OfflinePolicyAction.USE_CACHE)
+            .cancelWhenDestroyed()
             .executeStream(
                 onStreamReady = { inputStream ->
                     val buffer = ByteArray(8192)
@@ -140,6 +141,7 @@ class MainActivity : ComponentActivity() {
             .addHeaders(mapOf("headercustom2" to "custom"))
             .asObject<Any>()
             .withCache(Cache())
+            .cancelWhenDestroyed()
             .whenOffline(OfflinePolicyAction.QUEUE)
             .addObserver(object : INetraObserver {
                 override fun onNetworkChanged(event: NetworkEvent) {
@@ -329,7 +331,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         client = NetraClient.Builder(applicationContext)
             .baseUrl("http://10.0.2.2:3001")
-            .cancelWhenDestroyed()
             .build()
         enableEdgeToEdge()
         setContent {

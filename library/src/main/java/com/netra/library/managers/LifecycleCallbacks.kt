@@ -6,7 +6,7 @@ import android.os.Bundle
 
 class LifecycleCallbacks : Application.ActivityLifecycleCallbacks {
     override fun onActivityDestroyed(activity: Activity) {
-        CancelRequestManager.cancelAll()
+        CancelRequestManager.cancelWhenDestroyed()
     }
 
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
@@ -15,7 +15,9 @@ class LifecycleCallbacks : Application.ActivityLifecycleCallbacks {
 
     override fun onActivityResumed(activity: Activity) {}
 
-    override fun onActivityPaused(activity: Activity) {}
+    override fun onActivityPaused(activity: Activity) {
+        CancelRequestManager.cancelWhenDestroyed()
+    }
 
     override fun onActivityStopped(activity: Activity) {}
 

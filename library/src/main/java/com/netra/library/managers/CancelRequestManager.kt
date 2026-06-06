@@ -25,9 +25,11 @@ object CancelRequestManager {
         }
     }
 
-    fun cancelAll() {
-        for (call in activeCalls) {
-            cancel(call.key)
+    fun cancelWhenDestroyed() {
+        for (activeCall in activeCalls) {
+            if (activeCall.value.isCancelledWhenDestroy) {
+                cancel(activeCall.key)
+            }
         }
     }
 }

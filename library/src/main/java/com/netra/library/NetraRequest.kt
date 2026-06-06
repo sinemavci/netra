@@ -325,13 +325,14 @@ class NetraRequest<T>(
     fun executeStream(onStreamReady: (java.io.InputStream) -> Unit, onFailure: (Exception) -> Unit) {
         val networkSeverity = connectivityManager.getNetworkSpeedState()
         val request = getRequest(null)
-        val call = client.newCall(request)
+        val netraCall = NetraCall(client.newCall(request), isCancelWhenDestroyed)
+        CancelRequestManager.add(command.url, netraCall)
 
         if (connectivityManager.isConnected()) {
             if (networkSeverity == NetworkSeverity.NORMAL) {
                 executor!!.execute {
                     try {
-                        val response = call.execute()
+                        val response = netraCall.call.execute()
                         if (response.isSuccessful) {
                             val inputStream = response.body?.byteStream()
                             if (inputStream != null) {

@@ -22,7 +22,6 @@ class NetraClient private constructor(
     var baseUrl: String? = null,
     var converter: IConverter? = null,
     var headers: Map<String, String>,
-    var isCancelWhenDestroyed: Boolean = false,
 ) {
     var id: String = UUID.randomUUID().mostSignificantBits.toString()
 
@@ -41,7 +40,6 @@ class NetraClient private constructor(
         var baseUrl: String? = null,
         var converter: IConverter? = null,
         var headers: MutableMap<String, String> = mutableMapOf(),
-        var isCancelWhenDestroyed: Boolean = false,
     ) {
         fun baseUrl(url: String): Builder {
             this.baseUrl = url
@@ -64,16 +62,11 @@ class NetraClient private constructor(
             return this
         }
 
-        fun cancelWhenDestroyed(): Builder {
-            this.isCancelWhenDestroyed = true
-            return this
-        }
-
         fun build(): NetraClient {
-            initCompanion(context, isCancelWhenDestroyed)
+            initCompanion(context)
 
             if (baseUrl != null) {
-                return NetraClient(context, baseUrl!!, converter, headers, isCancelWhenDestroyed)
+                return NetraClient(context, baseUrl!!, converter, headers)
             } else {
                 throw Exception("Base url not found!")
             }
@@ -137,19 +130,17 @@ class NetraClient private constructor(
         internal lateinit var client: OkHttpClient
             private set
 
-        internal fun initCompanion(context: Context, isCancelWhenDestroyed: Boolean) {
+        internal fun initCompanion(context: Context) {
             if (!::client.isInitialized) {
                 client = OkHttpClient().newBuilder().addInterceptor(BaseInterceptor()).build()
             }
 
             OfflineQueueManager.init(context.applicationContext)
 
-            if (isCancelWhenDestroyed) {
-                val application = context.applicationContext as Application
-                application.registerActivityLifecycleCallbacks(
-                    LifecycleCallbacks()
-                )
-            }
+            val application = context.applicationContext as Application
+            application.registerActivityLifecycleCallbacks(
+                LifecycleCallbacks()
+            )
         }
     }
 }
