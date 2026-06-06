@@ -33,7 +33,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-class NetraCall<T>(
+class NetraRequest<T>(
     val context: Context,
     val client: OkHttpClient,
     val command: Command,
@@ -49,17 +49,17 @@ class NetraCall<T>(
     private var connectivityManager = NetraConnectivityManager.getInstance(context)
 
 
-    fun withCache(cache: Cache): NetraCall<T> {
+    fun withCache(cache: Cache): NetraRequest<T> {
         cacheManager.cache = cache
         return this
     }
 
-    fun whenSlowNetwork(action: SlowNetworkPolicyAction): NetraCall<T> {
+    fun whenSlowNetwork(action: SlowNetworkPolicyAction): NetraRequest<T> {
         slowNetworkPolicyAction = action
         return this
     }
 
-    fun whenOffline(action: OfflinePolicyAction): NetraCall<T> {
+    fun whenOffline(action: OfflinePolicyAction): NetraRequest<T> {
         offlinePolicyAction = action
         if (offlinePolicyAction is OfflinePolicyAction.RETRY) {
             retriesCount = (offlinePolicyAction as OfflinePolicyAction.RETRY).retries
@@ -69,14 +69,14 @@ class NetraCall<T>(
         return this
     }
 
-    fun addObserver(observer: INetraObserver): NetraCall<T> {
+    fun addObserver(observer: INetraObserver): NetraRequest<T> {
         if (observer !in ObserverManager.observers) {
             ObserverManager.observers.add(observer)
         }
         return this
     }
 
-    fun removeObserver(observer: INetraObserver): NetraCall<T> {
+    fun removeObserver(observer: INetraObserver): NetraRequest<T> {
         ObserverManager.observers.remove(observer)
         return this
     }

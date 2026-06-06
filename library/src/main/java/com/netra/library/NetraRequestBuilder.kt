@@ -32,12 +32,12 @@ class NetraRequestBuilder(
         return addHeaders(mapOf("X-Priority" to "Slow"))
     }
 
-    inline fun <reified T> asList(): NetraCall<List<T>> {
+    inline fun <reified T> asList(): NetraRequest<List<T>> {
         val type = object : TypeToken<List<T>>() {}.type
-        return NetraCall(context, client, command, type, converter, headers)
+        return NetraRequest(context, client, command, type, converter, headers)
     }
 
-    inline fun <reified T> asObject(): NetraCall<T> {
-        return NetraCall(context, client, command, T::class.java, converter, headers)
+    inline fun <reified T> asObject(): NetraRequest<T> {
+        return NetraRequest(context, client, command, T::class.java, converter, headers)
     }
 }

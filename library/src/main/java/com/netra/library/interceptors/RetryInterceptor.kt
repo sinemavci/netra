@@ -1,7 +1,7 @@
 package com.netra.library.interceptors
 
 import android.util.Log
-import com.netra.library.NetraCall
+import com.netra.library.NetraRequest
 import com.netra.library.StatusReporter
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -22,7 +22,7 @@ class RetryInterceptor(private val maxRetries: Int) : Interceptor {
                 return response
             } catch (e: IOException) {
                 Log.e("", "RetryInterceptor proceed response failed: ${e}")
-                reporter?.onStatusUpdate(NetraCall.getNetraFailedResponse(e))
+                reporter?.onStatusUpdate(NetraRequest.getNetraFailedResponse(e))
                 lastException = e
                 attempt++
                 Thread.sleep(2000L * attempt)
