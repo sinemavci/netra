@@ -6,7 +6,7 @@ import com.netra.library.converter.IConverter
 import com.netra.library.enums.Command
 import okhttp3.OkHttpClient
 
-class RequestBuilder(
+class NetraRequestBuilder(
     val context: Context,
     val command: Command,
     val client: OkHttpClient,
@@ -21,14 +21,14 @@ class RequestBuilder(
         }
     }
 
-    fun addHeaders(headerParam: Map<String, String>): RequestBuilder {
+    fun addHeaders(headerParam: Map<String, String>): NetraRequestBuilder {
         headerParam.forEach { (key, value) ->
             headers[key] = value
         }
         return this
     }
 
-    fun slowMode(): RequestBuilder {
+    fun slowMode(): NetraRequestBuilder {
         return addHeaders(mapOf("X-Priority" to "Slow"))
     }
 

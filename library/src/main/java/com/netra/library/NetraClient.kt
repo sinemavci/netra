@@ -80,12 +80,12 @@ class NetraClient private constructor(
         }
     }
 
-    fun get(path: String): RequestBuilder {
-        return RequestBuilder(context, Command.Get(baseUrl + path), client, converter, headers)
+    fun get(path: String): NetraRequestBuilder {
+        return NetraRequestBuilder(context, Command.Get(baseUrl + path), client, converter, headers)
     }
 
-    fun post(path: String, requestBody: NetraRequestBody): RequestBuilder {
-        return RequestBuilder(
+    fun post(path: String, requestBody: NetraRequestBody): NetraRequestBuilder {
+        return NetraRequestBuilder(
             context,
             Command.Post(baseUrl + path, requestBody),
             client,
@@ -94,8 +94,8 @@ class NetraClient private constructor(
         )
     }
 
-    fun put(path: String, requestBody: NetraRequestBody): RequestBuilder {
-        return RequestBuilder(
+    fun put(path: String, requestBody: NetraRequestBody): NetraRequestBuilder {
+        return NetraRequestBuilder(
             context,
             Command.Put(baseUrl + path, requestBody),
             client,
@@ -104,8 +104,8 @@ class NetraClient private constructor(
         )
     }
 
-    fun patch(path: String, requestBody: NetraRequestBody): RequestBuilder {
-        return RequestBuilder(
+    fun patch(path: String, requestBody: NetraRequestBody): NetraRequestBuilder {
+        return NetraRequestBuilder(
             context,
             Command.Patch(baseUrl + path, requestBody),
             client,
@@ -114,8 +114,8 @@ class NetraClient private constructor(
         )
     }
 
-    fun delete(path: String, requestBody: NetraRequestBody? = null): RequestBuilder {
-        return RequestBuilder(
+    fun delete(path: String, requestBody: NetraRequestBody? = null): NetraRequestBuilder {
+        return NetraRequestBuilder(
             context,
             Command.Delete(baseUrl + path, requestBody),
             client,
