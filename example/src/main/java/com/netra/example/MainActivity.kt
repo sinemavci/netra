@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -230,10 +232,10 @@ class MainActivity : ComponentActivity() {
                 )
 //
         }
-//        Handler(Looper.getMainLooper()).postDelayed({
-//            Log.e("", "cancelled")
-//            request.cancel()
-//        }, (2000))
+        Handler(Looper.getMainLooper()).postDelayed({
+            Log.e("", "cancelled")
+           // request.cancel()
+        }, (2000))
     }
 
     fun handlePost() {

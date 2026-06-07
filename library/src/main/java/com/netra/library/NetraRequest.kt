@@ -28,6 +28,7 @@ import okhttp3.Response
 import java.io.IOException
 import java.lang.reflect.Type
 import java.net.ConnectException
+import java.util.UUID
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -41,6 +42,7 @@ class NetraRequest<T>(
     val converter: IConverter?,
     val header: Map<String, String>?,
 ) {
+    var id: String = UUID.randomUUID().mostSignificantBits.toString()
     private var cacheManager = CacheManager(context, command)
     private var offlinePolicyAction: OfflinePolicyAction? = null
     private var slowNetworkPolicyAction: SlowNetworkPolicyAction? = null
@@ -88,7 +90,7 @@ class NetraRequest<T>(
 
     fun cancel() {
         try {
-            CancelRequestManager.cancel(command.url)
+            CancelRequestManager.cancel(id)
         } catch (e: Exception) {
             throw e
         }
@@ -106,7 +108,7 @@ class NetraRequest<T>(
     }
 
     private fun handleOnFailure(call: Call, e: IOException, callback: (NetraResponse?) -> Unit) {
-        CancelRequestManager.remove(command.url)
+        CancelRequestManager.remove(id)
         if (!call.isCanceled()) {
             val cache = cacheManager.getCacheIfValid()
             if (cache?.isNotEmpty() == true) {
@@ -129,7 +131,7 @@ class NetraRequest<T>(
         names().associateWith { name -> get(name)!! }
 
     private fun handleOnResponse(response: Response, callback: (NetraResponse?) -> Unit) {
-        CancelRequestManager.remove(command.url)
+        CancelRequestManager.remove(id)
         if (response.isSuccessful) {
             try {
                 val bodyBytes = response.body?.bytes()
@@ -300,7 +302,7 @@ class NetraRequest<T>(
         Log.e("", "slow network policy uses WAIT")
         Handler(Looper.getMainLooper()).postDelayed({
             val call = NetraCall(client.newCall(request), isCancelWhenDestroyed)
-            CancelRequestManager.add(command.url, call)
+            CancelRequestManager.add(id, call)
             executor!!.execute({
                 try {
                     val response = client.newCall(request).execute()
@@ -326,7 +328,7 @@ class NetraRequest<T>(
         val networkSeverity = connectivityManager.getNetworkSpeedState()
         val request = getRequest(null)
         val netraCall = NetraCall(client.newCall(request), isCancelWhenDestroyed)
-        CancelRequestManager.add(command.url, netraCall)
+        CancelRequestManager.add(id, netraCall)
 
         if (connectivityManager.isConnected()) {
             if (networkSeverity == NetworkSeverity.NORMAL) {
@@ -392,7 +394,7 @@ class NetraRequest<T>(
 
                     else -> {
                         val call = NetraCall(client.newCall(request), isCancelWhenDestroyed)
-                        CancelRequestManager.add(command.url, call)
+                        CancelRequestManager.add(id, call)
                         netraResponse = executeCommand(call)
                     }
                 }
@@ -464,7 +466,7 @@ class NetraRequest<T>(
         if (isConnected) {
             if (networkSeverity == NetworkSeverity.NORMAL) {
                 val call = NetraCall(client.newCall(request), isCancelWhenDestroyed)
-                CancelRequestManager.add(command.url, call)
+                CancelRequestManager.add(id, call)
                 enqueueCommand(call, callback)
             } else {
                 when (slowNetworkPolicyAction) {
@@ -494,7 +496,7 @@ class NetraRequest<T>(
                     is SlowNetworkPolicyAction.WAIT -> {
                         Handler(Looper.getMainLooper()).postDelayed({
                             val call = NetraCall(client.newCall(request), isCancelWhenDestroyed)
-                            CancelRequestManager.add(command.url, call)
+                            CancelRequestManager.add(id, call)
                             enqueueCommand(call, callback)
                         }, (slowNetworkPolicyAction as SlowNetworkPolicyAction.WAIT).delay)
                         return
@@ -502,7 +504,7 @@ class NetraRequest<T>(
 
                     else -> {
                         val call = NetraCall(client.newCall(request), isCancelWhenDestroyed)
-                        CancelRequestManager.add(command.url, call)
+                        CancelRequestManager.add(id, call)
                         enqueueCommand(call, callback)
                     }
                 }

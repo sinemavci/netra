@@ -358,6 +358,10 @@ client.get("/users")
 
 ## Kotlinx Serialization
 
+- `GSON`
+- `MOSHI`
+- `KOTLINX`
+
 ```kotlin
 val client = NetraClient.Builder(applicationContext)
     .addConverterFactory(

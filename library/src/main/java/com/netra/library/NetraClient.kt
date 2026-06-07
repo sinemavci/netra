@@ -7,6 +7,7 @@ import com.netra.library.converter.IConverter
 import com.netra.library.enums.Command
 import com.netra.library.interceptors.BaseInterceptor
 import com.netra.library.interceptors.CircuitBreakerInterceptor
+import com.netra.library.managers.CancelRequestManager
 import com.netra.library.managers.LifecycleCallbacks
 import com.netra.library.managers.OfflineQueueManager
 import com.netra.library.managers.ObserverManager
@@ -24,6 +25,8 @@ class NetraClient private constructor(
     var headers: Map<String, String>,
 ) {
     var id: String = UUID.randomUUID().mostSignificantBits.toString()
+
+    var pendingRequests: List<Pair<String, NetraCall>> = CancelRequestManager.getAllRequests()
 
     fun addObserver(observer: INetraObserver) {
         if (observer !in ObserverManager.observers) {

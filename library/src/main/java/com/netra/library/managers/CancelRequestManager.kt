@@ -6,19 +6,23 @@ import java.util.concurrent.ConcurrentHashMap
 object CancelRequestManager {
     private val activeCalls = ConcurrentHashMap<String, NetraCall>()
 
-    fun add(url: String, call: NetraCall) {
-        activeCalls[url] = call
+    fun getAllRequests(): List<Pair<String, NetraCall>> {
+        return activeCalls.toList()
     }
 
-    fun remove(url: String) {
-        activeCalls.remove(url)
+    fun add(id: String, call: NetraCall) {
+        activeCalls[id] = call
     }
 
-    fun cancel(key: String): Boolean {
-        val netraCall = activeCalls[key]
+    fun remove(id: String) {
+        activeCalls.remove(id)
+    }
+
+    fun cancel(id: String): Boolean {
+        val netraCall = activeCalls[id]
         return if (netraCall != null && !netraCall.call.isCanceled()) {
             netraCall.call.cancel()
-            activeCalls.remove(key)
+            activeCalls.remove(id)
             true
         } else {
             false
