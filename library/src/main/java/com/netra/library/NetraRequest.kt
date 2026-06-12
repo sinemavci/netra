@@ -1,11 +1,9 @@
 package com.netra.library
 
-import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.google.gson.Gson
-import com.netra.library.converter.IConverter
 import com.netra.library.enums.Command
 import com.netra.library.enums.NetworkSeverity
 import com.netra.library.enums.OfflinePolicyAction
@@ -34,21 +32,19 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-class NetraRequest<T>(
-    val context: Context,
-    val client: OkHttpClient,
+class NetraRequest<T> @PublishedApi internal constructor(
+    @PublishedApi internal val config: NetraConfig,
     val command: Command,
     val type: Type,
-    val converter: IConverter?,
-    val header: Map<String, String>?,
+    val header: Map<String, String>?
 ) {
     var id: String = UUID.randomUUID().mostSignificantBits.toString()
-    private var cacheManager = CacheManager(context, command)
+    private var cacheManager = CacheManager(config.context, command)
     private var offlinePolicyAction: OfflinePolicyAction? = null
     private var slowNetworkPolicyAction: SlowNetworkPolicyAction? = null
     private var retriesCount: Int? = null
     var executor: ExecutorService? = Executors.newSingleThreadExecutor()
-    private var connectivityManager = NetraConnectivityManager.getInstance(context)
+    private var connectivityManager = NetraConnectivityManager.getInstance(config.context)
     private var isCancelWhenDestroyed = false;
 
     fun withCache(cache: Cache): NetraRequest<T> {
@@ -97,9 +93,9 @@ class NetraRequest<T>(
     }
 
     private fun handleConvertedResponse(byteArray: ByteArray): T {
-        if (converter != null) {
+        if (config.converter != null) {
             val convertedResult: T =
-                converter.convert(byteArray, type)
+                config.converter.convert(byteArray, type)
             return convertedResult
         } else {
             @Suppress("UNCHECKED_CAST")
@@ -286,7 +282,7 @@ class NetraRequest<T>(
     }
 
     private fun handleTimeoutPolicy(): OkHttpClient {
-        val shortClient = client.newBuilder()
+        val shortClient = config.client.newBuilder()
             .callTimeout(
                 timeout = (slowNetworkPolicyAction as SlowNetworkPolicyAction.TIMEOUT).timeout,
                 TimeUnit.SECONDS
@@ -301,11 +297,11 @@ class NetraRequest<T>(
         lateinit var _netraResponse: NetraResponse
         Log.e("", "slow network policy uses WAIT")
         Handler(Looper.getMainLooper()).postDelayed({
-            val call = NetraCall(client.newCall(request), isCancelWhenDestroyed)
+            val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
             CancelRequestManager.add(id, call)
             executor!!.execute({
                 try {
-                    val response = client.newCall(request).execute()
+                    val response = config.client.newCall(request).execute()
                     _netraResponse = NetraResponse(
                         data = mapOf("data" to response.body?.bytes()),
                         statusCode = response.code,
@@ -327,7 +323,7 @@ class NetraRequest<T>(
     fun executeStream(onStreamReady: (java.io.InputStream) -> Unit, onFailure: (Exception) -> Unit) {
         val networkSeverity = connectivityManager.getNetworkSpeedState()
         val request = getRequest(null)
-        val netraCall = NetraCall(client.newCall(request), isCancelWhenDestroyed)
+        val netraCall = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
         CancelRequestManager.add(id, netraCall)
 
         if (connectivityManager.isConnected()) {
@@ -361,7 +357,7 @@ class NetraRequest<T>(
         lateinit var netraResponse: NetraResponse
         val networkSeverity = connectivityManager.getNetworkSpeedState()
         val request = getRequest(null)
-        val netraCall = NetraCall(client.newCall(request), isCancelWhenDestroyed)
+        val netraCall = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
 
         if (connectivityManager.isConnected()) {
             if (networkSeverity == NetworkSeverity.NORMAL) {
@@ -393,7 +389,7 @@ class NetraRequest<T>(
                     }
 
                     else -> {
-                        val call = NetraCall(client.newCall(request), isCancelWhenDestroyed)
+                        val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
                         CancelRequestManager.add(id, call)
                         netraResponse = executeCommand(call)
                     }
@@ -465,7 +461,7 @@ class NetraRequest<T>(
 
         if (isConnected) {
             if (networkSeverity == NetworkSeverity.NORMAL) {
-                val call = NetraCall(client.newCall(request), isCancelWhenDestroyed)
+                val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
                 CancelRequestManager.add(id, call)
                 enqueueCommand(call, callback)
             } else {
@@ -495,7 +491,7 @@ class NetraRequest<T>(
 
                     is SlowNetworkPolicyAction.WAIT -> {
                         Handler(Looper.getMainLooper()).postDelayed({
-                            val call = NetraCall(client.newCall(request), isCancelWhenDestroyed)
+                            val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
                             CancelRequestManager.add(id, call)
                             enqueueCommand(call, callback)
                         }, (slowNetworkPolicyAction as SlowNetworkPolicyAction.WAIT).delay)
@@ -503,7 +499,7 @@ class NetraRequest<T>(
                     }
 
                     else -> {
-                        val call = NetraCall(client.newCall(request), isCancelWhenDestroyed)
+                        val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
                         CancelRequestManager.add(id, call)
                         enqueueCommand(call, callback)
                     }

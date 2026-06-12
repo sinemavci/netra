@@ -18,12 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
 val cacheSize = maxMemory / 8
-class NetraClient private constructor(
-    val context: Context,
-    var baseUrl: String? = null,
-    var converter: IConverter? = null,
-    var headers: Map<String, String>,
-) {
+class NetraClient private constructor(internal val config: NetraConfig) {
     var id: String = UUID.randomUUID().mostSignificantBits.toString()
 
     var pendingRequests: List<Pair<String, NetraCall>> = CancelRequestManager.getAllRequests()
@@ -69,7 +64,8 @@ class NetraClient private constructor(
             initCompanion(context)
 
             if (baseUrl != null) {
-                return NetraClient(context, baseUrl!!, converter, headers)
+                val config = NetraConfig(context, client, baseUrl!!, converter, headers)
+                return NetraClient(config)
             } else {
                 throw Exception("Base url not found!")
             }
@@ -77,46 +73,34 @@ class NetraClient private constructor(
     }
 
     fun get(path: String): NetraRequestBuilder {
-        return NetraRequestBuilder(context, Command.Get(baseUrl + path), client, converter, headers)
+        return NetraRequestBuilder(config, Command.Get(config.baseUrl + path))
     }
 
     fun post(path: String, requestBody: NetraRequestBody): NetraRequestBuilder {
         return NetraRequestBuilder(
-            context,
-            Command.Post(baseUrl + path, requestBody),
-            client,
-            converter,
-            headers
+            config,
+            Command.Post(config.baseUrl + path, requestBody),
         )
     }
 
     fun put(path: String, requestBody: NetraRequestBody): NetraRequestBuilder {
         return NetraRequestBuilder(
-            context,
-            Command.Put(baseUrl + path, requestBody),
-            client,
-            converter,
-            headers
+            config,
+            Command.Put(config.baseUrl + path, requestBody),
         )
     }
 
     fun patch(path: String, requestBody: NetraRequestBody): NetraRequestBuilder {
         return NetraRequestBuilder(
-            context,
-            Command.Patch(baseUrl + path, requestBody),
-            client,
-            converter,
-            headers
+            config,
+            Command.Patch(config.baseUrl + path, requestBody),
         )
     }
 
     fun delete(path: String, requestBody: NetraRequestBody? = null): NetraRequestBuilder {
         return NetraRequestBuilder(
-            context,
-            Command.Delete(baseUrl + path, requestBody),
-            client,
-            converter,
-            headers
+            config,
+            Command.Delete(config.baseUrl + path, requestBody),
         )
     }
 

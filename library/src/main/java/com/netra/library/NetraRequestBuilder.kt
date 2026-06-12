@@ -1,22 +1,16 @@
 package com.netra.library
 
-import android.content.Context
 import com.google.gson.reflect.TypeToken
-import com.netra.library.converter.IConverter
 import com.netra.library.enums.Command
-import okhttp3.OkHttpClient
 
-class NetraRequestBuilder(
-    val context: Context,
-    val command: Command,
-    val client: OkHttpClient,
-    val converter: IConverter?,
-    clientHeaders: Map<String, String>
+class NetraRequestBuilder internal constructor(
+    @PublishedApi internal val config: NetraConfig,
+    val command: Command
 ) {
     val headers = mutableMapOf<String, String>()
 
     init {
-        clientHeaders.forEach { (key, value) ->
+        config.globalHeaders.forEach { (key, value) ->
             headers[key] = value
         }
     }
@@ -34,10 +28,10 @@ class NetraRequestBuilder(
 
     inline fun <reified T> asList(): NetraRequest<List<T>> {
         val type = object : TypeToken<List<T>>() {}.type
-        return NetraRequest(context, client, command, type, converter, headers)
+        return NetraRequest(config, command, type, headers)
     }
 
     inline fun <reified T> asObject(): NetraRequest<T> {
-        return NetraRequest(context, client, command, T::class.java, converter, headers)
+        return NetraRequest(config, command, T::class.java, headers)
     }
 }
