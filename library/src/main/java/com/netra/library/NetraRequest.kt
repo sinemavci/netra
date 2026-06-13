@@ -14,6 +14,7 @@ import com.netra.library.managers.ObserverManager
 import com.netra.library.managers.CancelRequestManager
 import com.netra.library.managers.OfflineQueueManager
 import com.netra.library.observers.INetraObserver
+import com.netra.library.observers.ResponseEvent
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Headers
@@ -134,24 +135,43 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 bodyBytes?.let {
                     cacheManager.writeCacheResponse(it)
                     val convertedResponse = handleConvertedResponse(it)
-                    callback(
-                        NetraResponse(
-                            data = mapOf("data" to convertedResponse),
-                            statusCode = 200,
-                            statusMessage = null,
-                            isCache = false,
-                            headers = response.headers.toMap()
+                    val _response = NetraResponse(
+                        data = mapOf("data" to convertedResponse),
+                        statusCode = 200,
+                        statusMessage = null,
+                        isCache = false,
+                        headers = response.headers.toMap()
+                    )
+                    callback(_response)
+                    ObserverManager.notifyResponseEvent(
+                        ResponseEvent.ResponseReceived(
+                            key = id,
+                            response = _response,
                         )
                     )
                 }
             } catch (e: Error) {
-                callback(getNetraFailedResponse(Exception(e.message)))
+                val _response = getNetraFailedResponse(Exception(e.message))
+                callback(_response)
+                ObserverManager.notifyResponseEvent(
+                    ResponseEvent.ResponseReceived(
+                        key = id,
+                        response = _response,
+                    )
+                )
             } finally {
                 response.close()
             }
         } else {
             response.close()
-            callback(getNetraFailedResponse(Exception(response.message)))
+            val _response = getNetraFailedResponse(Exception(response.message))
+            callback(_response)
+            ObserverManager.notifyResponseEvent(
+                ResponseEvent.ResponseReceived(
+                    key = id,
+                    response = _response,
+                )
+            )
         }
     }
 
@@ -380,12 +400,13 @@ class NetraRequest<T> @PublishedApi internal constructor(
 
                     is SlowNetworkPolicyAction.TIMEOUT -> {
                         val shortClient = handleTimeoutPolicy()
-                        val shortCall = NetraCall(shortClient.newCall(request), isCancelWhenDestroyed)
+                        val shortCall =
+                            NetraCall(shortClient.newCall(request), isCancelWhenDestroyed)
                         netraResponse = executeCommand(shortCall)
                     }
 
                     is SlowNetworkPolicyAction.WAIT -> {
-                       netraResponse = handleWaitPolicy(request)
+                        netraResponse = handleWaitPolicy(request)
                     }
 
                     else -> {
@@ -409,7 +430,10 @@ class NetraRequest<T> @PublishedApi internal constructor(
                         val retryClient = OkHttpClient.Builder()
                             .addInterceptor(RetryInterceptor(maxRetries = retriesCount!!))
                             .build()
-                        val netraCall = NetraCall(retryClient.newCall(netraCall.call.request()), isCancelWhenDestroyed)
+                        val netraCall = NetraCall(
+                            retryClient.newCall(netraCall.call.request()),
+                            isCancelWhenDestroyed
+                        )
                         netraResponse = executeCommand(netraCall)
                     }
                     retriesCount = null
@@ -469,16 +493,28 @@ class NetraRequest<T> @PublishedApi internal constructor(
                     is SlowNetworkPolicyAction.USE_CACHE -> {
                         val cache = cacheManager.getCacheAllowExpired()
                         if (cache?.isNotEmpty() == true) {
-                            callback(
-                                NetraResponse(
-                                    data = mapOf("data" to handleConvertedResponse(cache)),
-                                    statusCode = 200,
-                                    statusMessage = null,
-                                    isCache = true,
+                            val _response = NetraResponse(
+                                data = mapOf("data" to handleConvertedResponse(cache)),
+                                statusCode = 200,
+                                statusMessage = null,
+                                isCache = true,
+                            )
+                            callback(_response)
+                            ObserverManager.notifyResponseEvent(
+                                ResponseEvent.ResponseReceived(
+                                    key = request.url.toString(),
+                                    response = _response,
                                 )
                             )
                         } else {
-                            callback(getNetraFailedResponse(Exception("Cache not found!")))
+                            val _response = getNetraFailedResponse(Exception("Cache not found!"))
+                            callback(_response)
+                            ObserverManager.notifyResponseEvent(
+                                ResponseEvent.ResponseReceived(
+                                    key = request.url.toString(),
+                                    response = _response,
+                                )
+                            )
                         }
                     }
 

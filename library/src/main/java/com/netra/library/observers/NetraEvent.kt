@@ -1,5 +1,6 @@
 package com.netra.library.observers
 
+import com.netra.library.NetraRequest
 import com.netra.library.NetraResponse
 
 sealed interface NetworkEvent {
@@ -69,3 +70,18 @@ sealed interface RequestQueuedEvent {
         val key: String,
     ) : RequestQueuedEvent
 }
+
+sealed interface RequestEvent {
+    data class RequestExecuted(
+        val key: String,
+        val request: NetraRequest<Any>,
+    )
+}
+
+sealed interface ResponseEvent {
+    data class ResponseReceived(
+        val key: String,
+        val response: NetraResponse,
+    ) : ResponseEvent
+}
+

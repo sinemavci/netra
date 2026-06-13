@@ -6,4 +6,8 @@ interface INetraObserver {
     fun onCacheChanged(event: CacheEvent)
 
     fun onQueueChanged(event: RequestQueuedEvent)
+
+    fun onRequestExecuted(event: RequestEvent)
+
+    fun onResponseReceived(event: ResponseEvent)
 }

@@ -27,14 +27,16 @@ import com.netra.library.observers.INetraObserver
 import com.netra.library.NetraClient
 import com.netra.library.NetraPart
 import com.netra.library.NetraRequestBody
+import com.netra.library.NetraResponse
 import com.netra.library.observers.NetworkEvent
 import com.netra.library.observers.RequestQueuedEvent
 import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
 import com.netra.library.converter.NetraKotlinxConverter
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import com.netra.library.interceptors.NetraInterceptor
+import com.netra.library.observers.RequestEvent
+import com.netra.library.observers.ResponseEvent
+import okio.IOException
 
 data class Repo(
     val id: Int,
@@ -138,7 +140,7 @@ class MainActivity : ComponentActivity() {
 //            )
 //            .build()
 
-        val request = client!!.get("/?status=200&delay=6000")
+        val request = client!!.get("/?status=500&delay=6000")
             .slowMode()
             .addHeaders(mapOf("headercustom2" to "custom"))
             .asObject<Any>()
@@ -151,6 +153,14 @@ class MainActivity : ComponentActivity() {
                         "",
                         "request NetworkEvent observer here: ${event}}"
                     )
+                }
+
+                override fun onRequestExecuted(event: RequestEvent) {
+                    TODO("Not yet implemented")
+                }
+
+                override fun onResponseReceived(event: ResponseEvent) {
+                    TODO("Not yet implemented")
                 }
 
                 override fun onCacheChanged(event: CacheEvent) {
@@ -233,7 +243,7 @@ class MainActivity : ComponentActivity() {
 //
         }
         Handler(Looper.getMainLooper()).postDelayed({
-            Log.e("", "cancelled")
+         //   Log.e("", "cancelled")
            // request.cancel()
         }, (2000))
     }
@@ -333,6 +343,34 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         client = NetraClient.Builder(applicationContext)
             .baseUrl("http://10.0.2.2:3001")
+            .addInterceptor(object : NetraInterceptor {
+                override fun intercept(chain: NetraInterceptor.NetraChain): NetraResponse {
+//                    var attempt = 0
+//                    var lastException: IOException? = null
+//
+//                    while (attempt < 5) {
+//                        try {
+//                            val response = chain.proceed(chain.request())
+//                            Log.e("", "attempt: ${attempt} response here: ${response.statusCode}")
+//                            return response
+//                        } catch (e: IOException) {
+//                            lastException = e
+//                            attempt++
+//                            Thread.sleep(2000L * attempt)
+//                        }
+//                    }
+//                    throw lastException!!
+                    return NetraResponse(
+                        data = mapOf("data" to {
+                            "here" to "here"
+                        }),
+                        statusCode = 200,
+                        statusMessage = null,
+                        isCache = false,
+                    )
+                }
+
+            })
             .build()
         enableEdgeToEdge()
         setContent {
