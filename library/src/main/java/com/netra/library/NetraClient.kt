@@ -7,13 +7,19 @@ import com.netra.library.converter.IConverter
 import com.netra.library.enums.Command
 import com.netra.library.interceptors.BaseInterceptor
 import com.netra.library.interceptors.CircuitBreakerInterceptor
+import com.netra.library.interceptors.NetraInterceptor
 import com.netra.library.managers.CancelRequestManager
 import com.netra.library.managers.LifecycleCallbacks
 import com.netra.library.managers.OfflineQueueManager
 import com.netra.library.managers.ObserverManager
 import com.netra.library.observers.INetraObserver
+import com.netra.library.utils.ResponseUtil
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
@@ -41,6 +47,33 @@ class NetraClient private constructor(internal val config: NetraConfig) {
     ) {
         fun baseUrl(url: String): Builder {
             this.baseUrl = url
+            return this
+        }
+
+        fun addInterceptor(netraInterceptor: NetraInterceptor): Builder {
+            val okHttpInterceptor = object : Interceptor {
+                override fun intercept(chain: Interceptor.Chain): Response {
+                    val okHttpRequest = chain.request()
+
+                    val netraChain = object : NetraInterceptor.NetraChain {
+                        override fun request(): Request {
+                            return okHttpRequest
+                        }
+
+                        override fun proceed(request: Request): NetraResponse {
+                            val okHttpResponse = chain.proceed(request)
+                            return ResponseUtil.convertOkHttpResponseToNetra(okHttpResponse)
+                        }
+                    }
+
+                    val netraResponse = netraInterceptor.intercept(netraChain)
+                    return ResponseUtil.convertNetraResponseToOkHttp(netraResponse, okHttpRequest)
+                }
+            }
+            //todo
+//            client.newBuilder().addInterceptor(okHttpInterceptor)
+            client = OkHttpClient().newBuilder()
+                .addInterceptor(okHttpInterceptor).build()
             return this
         }
 
