@@ -5,7 +5,6 @@ import com.netra.library.observers.CacheEvent
 import com.netra.library.observers.INetraObserver
 import com.netra.library.observers.NetworkEvent
 import com.netra.library.observers.RequestEvent
-import com.netra.library.observers.RequestQueuedEvent
 import com.netra.library.observers.ResponseEvent
 import com.netra.library.utils.EventDispatcher
 
@@ -36,11 +35,11 @@ internal object ObserverManager {
         }
     }
 
-    fun notifyQueuedEvent(event: RequestQueuedEvent) {
+    fun notifyQueuedEvent(event: RequestEvent) {
         EventDispatcher.runOnMain {
             observers.toTypedArray().forEach { observer ->
                 try {
-                    observer.onQueueChanged(event)
+                    observer.onRequestChanged(event)
                 } catch (e: Exception) {
                     Log.e("MapRays", "Error in observer: ${e.message}", e)
                 }
@@ -52,7 +51,7 @@ internal object ObserverManager {
         EventDispatcher.runOnMain {
             observers.toTypedArray().forEach { observer ->
                 try {
-                    observer.onRequestExecuted(event)
+                    observer.onRequestChanged(event)
                 } catch (e: Exception) {
                     Log.e("MapRays", "Error in observer: ${e.message}", e)
                 }

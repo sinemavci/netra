@@ -29,14 +29,12 @@ import com.netra.library.NetraPart
 import com.netra.library.NetraRequestBody
 import com.netra.library.NetraResponse
 import com.netra.library.observers.NetworkEvent
-import com.netra.library.observers.RequestQueuedEvent
+import com.netra.library.observers.RequestEvent
 import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
 import com.netra.library.converter.NetraKotlinxConverter
 import com.netra.library.interceptors.NetraInterceptor
-import com.netra.library.observers.RequestEvent
 import com.netra.library.observers.ResponseEvent
-import okio.IOException
 
 data class Repo(
     val id: Int,
@@ -155,10 +153,6 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                override fun onRequestExecuted(event: RequestEvent) {
-                    TODO("Not yet implemented")
-                }
-
                 override fun onResponseReceived(event: ResponseEvent) {
                     TODO("Not yet implemented")
                 }
@@ -202,27 +196,27 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                override fun onQueueChanged(event: RequestQueuedEvent) {
+                override fun onRequestChanged(event: RequestEvent) {
                     when (event) {
-                        is RequestQueuedEvent.RequestQueued -> {
+                        is RequestEvent.RequestQueued -> {
                             Log.e(
                                 "",
                                 "RequestQueued: ${event.key} queueOrder: ${event.queueOrder}"
                             )
                         }
-                        is RequestQueuedEvent.QueuedRequestRestored -> {
+                        is RequestEvent.QueuedRequestRestored -> {
                             Log.e(
                                 "",
                                 "QueuedRequestRestored: ${event.key}"
                             )
                         }
-                        is RequestQueuedEvent.QueuedRequestExecuted -> {
+                        is RequestEvent.QueuedRequestExecuted -> {
                             Log.e(
                                 "",
                                 "QueuedRequestExecuted: ${event.key} statusCode: ${event.response.statusCode}"
                             )
                         }
-                        is RequestQueuedEvent.QueuedRequestFailed -> {
+                        is RequestEvent.QueuedRequestFailed -> {
                             Log.e(
                                 "",
                                 "QueuedRequestFailed: ${event.key}"
