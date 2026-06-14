@@ -347,34 +347,34 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         client = NetraClient.Builder(applicationContext)
             .baseUrl("http://10.0.2.2:3001")
-//            .addInterceptor(object : NetraInterceptor {
-//                override fun intercept(chain: NetraInterceptor.NetraChain): NetraResponse {
-////                    var attempt = 0
-////                    var lastException: IOException? = null
-////
-////                    while (attempt < 5) {
-////                        try {
-////                            val response = chain.proceed(chain.request())
-////                            Log.e("", "attempt: ${attempt} response here: ${response.statusCode}")
-////                            return response
-////                        } catch (e: IOException) {
-////                            lastException = e
-////                            attempt++
-////                            Thread.sleep(2000L * attempt)
-////                        }
-////                    }
-////                    throw lastException!!
-//                    return NetraResponse(
-//                        data = mapOf("data" to {
-//                            "here" to "here"
-//                        }),
-//                        statusCode = 200,
-//                        statusMessage = null,
-//                        isCache = false,
-//                    )
-//                }
+            .addInterceptor(object : NetraInterceptor {
+                override fun intercept(chain: NetraInterceptor.NetraChain): NetraResponse {
+//                    var attempt = 0
+//                    var lastException: IOException? = null
 //
-//            })
+//                    while (attempt < 5) {
+//                        try {
+                           chain.proceed(chain.request())
+//                            Log.e("", "attempt: ${attempt} response here: ${response.statusCode}")
+//                            return response
+//                        } catch (e: IOException) {
+//                            lastException = e
+//                            attempt++
+//                            Thread.sleep(2000L * attempt)
+//                        }
+//                    }
+//                    throw lastException!!
+                    return NetraResponse(
+                        data = mapOf("data" to {
+                            "here" to "here"
+                        }),
+                        statusCode = 200,
+                        statusMessage = null,
+                        isCache = false,
+                    )
+                }
+
+            })
             .build()
         enableEdgeToEdge()
         setContent {

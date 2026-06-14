@@ -70,9 +70,9 @@ class NetraClient private constructor(internal val config: NetraConfig) {
                     return ResponseUtil.convertNetraResponseToOkHttp(netraResponse, okHttpRequest)
                 }
             }
-            //todo
-//            client.newBuilder().addInterceptor(okHttpInterceptor)
-            client = OkHttpClient().newBuilder()
+            client = OkHttpClient().newBuilder().eventListener(
+                NetraNetworkListener()
+            )
                 .addInterceptor(okHttpInterceptor).build()
             return this
         }
@@ -83,7 +83,9 @@ class NetraClient private constructor(internal val config: NetraConfig) {
         }
 
         fun circuitBreaker(failureThreshold: Int? = 5, retryDelayMs: Long? = 1000L): Builder {
-            client = OkHttpClient().newBuilder()
+            client = OkHttpClient().newBuilder().eventListener(
+                NetraNetworkListener()
+            )
                 .addInterceptor(CircuitBreakerInterceptor(failureThreshold, retryDelayMs)).build()
             return this
         }
