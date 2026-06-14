@@ -13,13 +13,13 @@ import com.netra.library.managers.LifecycleCallbacks
 import com.netra.library.managers.OfflineQueueManager
 import com.netra.library.managers.ObserverManager
 import com.netra.library.observers.INetraObserver
+import com.netra.library.observers.NetraNetworkListener
 import com.netra.library.utils.ResponseUtil
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
@@ -152,7 +152,10 @@ class NetraClient private constructor(internal val config: NetraConfig) {
 
         internal fun initCompanion(context: Context) {
             if (!::client.isInitialized) {
-                client = OkHttpClient().newBuilder().addInterceptor(BaseInterceptor()).build()
+                client =
+                    OkHttpClient().newBuilder().addInterceptor(BaseInterceptor()).eventListener(
+                        NetraNetworkListener()
+                    ).build()
             }
 
             OfflineQueueManager.init(context.applicationContext)

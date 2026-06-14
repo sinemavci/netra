@@ -154,7 +154,10 @@ class MainActivity : ComponentActivity() {
                 }
 
                 override fun onResponseReceived(event: ResponseEvent) {
-                    TODO("Not yet implemented")
+                    Log.e(
+                        "",
+                        "request NetworkEvent observer here: ${event}}"
+                    )
                 }
 
                 override fun onCacheChanged(event: CacheEvent) {
@@ -220,6 +223,13 @@ class MainActivity : ComponentActivity() {
                             Log.e(
                                 "",
                                 "QueuedRequestFailed: ${event.key}"
+                            )
+                        }
+
+                        is RequestEvent.RequestExecuted -> {
+                            Log.e(
+                                "",
+                                "RequestExecuted: ${event.key} id: ${event.request.id}"
                             )
                         }
                     }
@@ -337,34 +347,34 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         client = NetraClient.Builder(applicationContext)
             .baseUrl("http://10.0.2.2:3001")
-            .addInterceptor(object : NetraInterceptor {
-                override fun intercept(chain: NetraInterceptor.NetraChain): NetraResponse {
-//                    var attempt = 0
-//                    var lastException: IOException? = null
+//            .addInterceptor(object : NetraInterceptor {
+//                override fun intercept(chain: NetraInterceptor.NetraChain): NetraResponse {
+////                    var attempt = 0
+////                    var lastException: IOException? = null
+////
+////                    while (attempt < 5) {
+////                        try {
+////                            val response = chain.proceed(chain.request())
+////                            Log.e("", "attempt: ${attempt} response here: ${response.statusCode}")
+////                            return response
+////                        } catch (e: IOException) {
+////                            lastException = e
+////                            attempt++
+////                            Thread.sleep(2000L * attempt)
+////                        }
+////                    }
+////                    throw lastException!!
+//                    return NetraResponse(
+//                        data = mapOf("data" to {
+//                            "here" to "here"
+//                        }),
+//                        statusCode = 200,
+//                        statusMessage = null,
+//                        isCache = false,
+//                    )
+//                }
 //
-//                    while (attempt < 5) {
-//                        try {
-//                            val response = chain.proceed(chain.request())
-//                            Log.e("", "attempt: ${attempt} response here: ${response.statusCode}")
-//                            return response
-//                        } catch (e: IOException) {
-//                            lastException = e
-//                            attempt++
-//                            Thread.sleep(2000L * attempt)
-//                        }
-//                    }
-//                    throw lastException!!
-                    return NetraResponse(
-                        data = mapOf("data" to {
-                            "here" to "here"
-                        }),
-                        statusCode = 200,
-                        statusMessage = null,
-                        isCache = false,
-                    )
-                }
-
-            })
+//            })
             .build()
         enableEdgeToEdge()
         setContent {

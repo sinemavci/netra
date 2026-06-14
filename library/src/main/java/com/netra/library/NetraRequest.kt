@@ -216,7 +216,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
     }
 
     private fun getRequest(reporter: StatusReporter?): Request {
-        return when (command) {
+        val requestBuilder: Request.Builder = when (command) {
             is Command.Get -> {
                 val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
                     .url(command.url).get()
@@ -224,7 +224,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 header?.forEach { (key, value) ->
                     requestBuilder.addHeader(key, value)
                 }
-                requestBuilder.build()
+                requestBuilder
             }
 
             is Command.Post -> {
@@ -235,7 +235,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 header?.forEach { (key, value) ->
                     requestBuilder.addHeader(key, value)
                 }
-                requestBuilder.build()
+                requestBuilder
             }
 
             is Command.Put -> {
@@ -246,7 +246,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 header?.forEach { (key, value) ->
                     requestBuilder.addHeader(key, value)
                 }
-                requestBuilder.build()
+                requestBuilder
             }
 
             is Command.Patch -> {
@@ -257,7 +257,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 header?.forEach { (key, value) ->
                     requestBuilder.addHeader(key, value)
                 }
-                requestBuilder.build()
+                requestBuilder
             }
 
             is Command.Delete -> {
@@ -268,9 +268,11 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 header?.forEach { (key, value) ->
                     requestBuilder.addHeader(key, value)
                 }
-                requestBuilder.build()
+                requestBuilder
             }
         }
+        requestBuilder.tag(NetraRequest::class.java, this)
+        return requestBuilder.build()
     }
 
     private fun executeCommand(netraCall: NetraCall): NetraResponse {

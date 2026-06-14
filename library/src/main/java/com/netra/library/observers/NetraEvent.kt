@@ -72,8 +72,8 @@ sealed interface RequestEvent {
 
     data class RequestExecuted(
         val key: String,
-        val request: NetraRequest<Any>,
-    )
+        val request: NetraRequest<*>,
+    ): RequestEvent
 }
 
 sealed interface ResponseEvent {
