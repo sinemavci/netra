@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
 val cacheSize = maxMemory / 8
-class NetraClient private constructor(internal val config: NetraConfig) {
+class NetraClient private constructor(internal val config: NetraClientConfig) {
     var id: String = UUID.randomUUID().mostSignificantBits.toString()
 
     var pendingRequests: List<Pair<String, NetraCall>> = CancelRequestManager.getAllRequests()
@@ -99,7 +99,7 @@ class NetraClient private constructor(internal val config: NetraConfig) {
             initCompanion(context)
 
             if (baseUrl != null) {
-                val config = NetraConfig(context, client, baseUrl!!, converter, headers)
+                val config = NetraClientConfig(context, client, baseUrl!!, converter, headers)
                 return NetraClient(config)
             } else {
                 throw Exception("Base url not found!")

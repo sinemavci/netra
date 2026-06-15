@@ -34,7 +34,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 class NetraRequest<T> @PublishedApi internal constructor(
-    @PublishedApi internal val config: NetraConfig,
+    @PublishedApi internal val config: NetraClientConfig,
     val command: Command,
     val type: Type,
     val header: Map<String, String>?

@@ -5,7 +5,7 @@ import com.netra.library.converter.IConverter
 import okhttp3.OkHttpClient
 
 @PublishedApi
-internal class NetraConfig(
+internal class NetraClientConfig(
     val context: Context,
     val client: OkHttpClient,
     val baseUrl: String,

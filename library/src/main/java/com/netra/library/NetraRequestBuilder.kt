@@ -4,7 +4,7 @@ import com.google.gson.reflect.TypeToken
 import com.netra.library.enums.Command
 
 class NetraRequestBuilder internal constructor(
-    @PublishedApi internal val config: NetraConfig,
+    @PublishedApi internal val config: NetraClientConfig,
     val command: Command
 ) {
     val headers = mutableMapOf<String, String>()
