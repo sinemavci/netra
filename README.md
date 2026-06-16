@@ -392,7 +392,7 @@ client.get("/users")
 ---
 
 # Add Global Interceptor
-## Global interceptors are applied to all requests created by the client.
+### Global interceptors are applied to all requests created by the client.
 
 ```kotlin
 val client = NetraClient.Builder(applicationContext)
