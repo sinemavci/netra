@@ -32,6 +32,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.String
 
 class NetraRequest<T> @PublishedApi internal constructor(
     @PublishedApi internal val config: NetraClientConfig,
@@ -342,7 +343,10 @@ class NetraRequest<T> @PublishedApi internal constructor(
         return _netraResponse
     }
 
-    fun executeStream(onStreamReady: (java.io.InputStream) -> Unit, onFailure: (Exception) -> Unit) {
+    fun executeStream(
+        onStreamReady: (java.io.InputStream) -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
         val networkSeverity = connectivityManager.getNetworkSpeedState()
         val request = getRequest(null)
         val netraCall = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
@@ -522,14 +526,16 @@ class NetraRequest<T> @PublishedApi internal constructor(
 
                     is SlowNetworkPolicyAction.TIMEOUT -> {
                         val shortClient = handleTimeoutPolicy()
-                        val shortCall = NetraCall(shortClient.newCall(request), isCancelWhenDestroyed)
+                        val shortCall =
+                            NetraCall(shortClient.newCall(request), isCancelWhenDestroyed)
                         enqueueCommand(shortCall, callback)
                         return
                     }
 
                     is SlowNetworkPolicyAction.WAIT -> {
                         Handler(Looper.getMainLooper()).postDelayed({
-                            val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
+                            val call =
+                                NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
                             CancelRequestManager.add(id, call)
                             enqueueCommand(call, callback)
                         }, (slowNetworkPolicyAction as SlowNetworkPolicyAction.WAIT).delay)
@@ -595,6 +601,19 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 }
             }
         }
+    }
+
+    fun toConfig(): NetraRequestConfig {
+        return NetraRequestConfig(
+            id = id,
+            url = command.url,
+            headers = header,
+            offlinePolicy = offlinePolicyAction,
+            slowNetworkPolicy = slowNetworkPolicyAction,
+            cancelOnDispose = isCancelWhenDestroyed,
+            cache = cacheManager.cache,
+            body = command.body
+        )
     }
 
     companion object {
