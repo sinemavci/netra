@@ -391,6 +391,38 @@ client.get("/users")
 
 ---
 
+# Add Global Interceptor
+## Global interceptors are applied to all requests created by the client.
+
+```kotlin
+val client = NetraClient.Builder(applicationContext)
+    .addInterceptor(object : NetraInterceptor {
+
+        override fun intercept(chain: NetraInterceptor.Chain): NetraResponse {
+
+            val request = chain.request()
+
+            println("Request URL: ${request.url}")
+            println("Request Method: ${request.method}")
+
+            val modifiedRequest = request.newBuilder()
+                .addHeader("X-App-Version", "1.0.0")
+                .build()
+
+            val response = chain.proceed(modifiedRequest)
+
+            println("Response Code: ${response.statusCode}")
+
+            return response
+        }
+    })
+    .build()
+```
+
+---
+
+---
+
 # Cancel Request
 
 ```kotlin
@@ -415,7 +447,6 @@ result?.data
 # Roadmap
 
 - [ ] WebSocket support
-- [ ] Logging interceptor
 - [ ] Request deduplication
 ---
 
