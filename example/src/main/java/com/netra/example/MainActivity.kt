@@ -165,35 +165,35 @@ class MainActivity : ComponentActivity() {
                         is CacheEvent.StaleCacheUsed -> {
                             Log.e(
                                 "",
-                                "StaleCacheUsed: ${event.key} ${event.ageMs} ${event.expiredByMs}}"
+                                "StaleCacheUsed: ${event.request.command.url} ${event.ageMs} ${event.expiredByMs}}"
                             )
                         }
 
                         is CacheEvent.CacheMiss -> {
                             Log.e(
                                 "",
-                                "CacheMiss: ${event.key}"
+                                "CacheMiss: ${event.request.command.url}"
                             )
                         }
 
                         is CacheEvent.CacheExpired -> {
                             Log.e(
                                 "",
-                                "CacheExpired: ${event.key} ${event.ageMs} ${event.expiredByMs}}"
+                                "CacheExpired: ${event.request.command.url} ${event.ageMs} ${event.expiredByMs}}"
                             )
                         }
 
                         is CacheEvent.CacheStored -> {
                             Log.e(
                                 "",
-                                "CacheStored: ${event.key} ${event.ageMs}}"
+                                "CacheStored: ${event.request.command} ${event.ageMs}}"
                             )
                         }
 
                         is CacheEvent.CacheHit -> {
                             Log.e(
                                 "",
-                                "CacheHit: ${event.key} ${event.ageMs}"
+                                "CacheHit: ${event.request.command.url} ${event.ageMs}"
                             )
                         }
                     }

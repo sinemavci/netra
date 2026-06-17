@@ -4,17 +4,17 @@ import android.content.Context
 import com.netra.library.Cache
 import com.netra.library.observers.CacheEvent
 import com.netra.library.NetraClient
-import com.netra.library.enums.Command
+import com.netra.library.NetraRequest
 import java.io.File
 import java.security.MessageDigest
 import kotlin.Long
 import kotlin.String
 
-internal class CacheManager(val context: Context, val command: Command) {
+internal class CacheManager(val context: Context, val request: NetraRequest<*>) {
     var cache: Cache? = null
-    private fun getCacheKey(command: Command): String {
+    private fun getCacheKey(): String {
         val bytes = MessageDigest.getInstance("MD5")
-            .digest(command.url.toByteArray() + command.toString().toByteArray())
+            .digest(request.command.url.toByteArray() + request.command.toString().toByteArray())
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
@@ -41,7 +41,7 @@ internal class CacheManager(val context: Context, val command: Command) {
 
         cache?.let {
             val cacheDirectory = context.cacheDir
-            val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
+            val cacheFile = File("${cacheDirectory}/${getCacheKey()}")
 
             if (cacheFile.exists()) {
                 cacheFile.delete()
@@ -49,10 +49,10 @@ internal class CacheManager(val context: Context, val command: Command) {
 
             cacheFile.createNewFile()
             cacheFile.writeBytes(bodyBytes)
-            NetraClient.memoryCache.put(command.url, bodyBytes)
+            NetraClient.memoryCache.put(request.command.url, bodyBytes)
             ObserverManager.notifyCacheEvent(
                 CacheEvent.CacheStored(
-                    key = "",
+                    request = request,
                     ageMs = getCacheAgeByMs(cacheFile),
                     sizeByte = bodyBytes.size,
                 )
@@ -63,12 +63,12 @@ internal class CacheManager(val context: Context, val command: Command) {
     fun getCacheAllowExpired(): ByteArray? {
         var cacheValue: ByteArray? = null
         val cacheDirectory = context.cacheDir
-        val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
+        val cacheFile = File("${cacheDirectory}/${getCacheKey()}")
         if (cacheFile.exists() && cache != null) {
             cacheValue = cacheFile.readBytes()
             ObserverManager.notifyCacheEvent(
                 CacheEvent.StaleCacheUsed(
-                    key = "",
+                    request = request,
                     ttlMs = cache?.ttl ?: 600000,
                     ageMs = getCacheAgeByMs(cacheFile),
                     expiredByMs = getCacheExpiredByMs(cacheFile, cache?.ttl ?: 600000),
@@ -77,7 +77,7 @@ internal class CacheManager(val context: Context, val command: Command) {
         } else {
             ObserverManager.notifyCacheEvent(
                 CacheEvent.CacheMiss(
-                    key = "",
+                    request = request,
                 )
             )
         }
@@ -87,12 +87,12 @@ internal class CacheManager(val context: Context, val command: Command) {
     fun getCacheIfValid(): ByteArray? {
         var cacheValue: ByteArray? = null
         val cacheDirectory = context.cacheDir
-        val cacheFile = File("${cacheDirectory}/${getCacheKey(command)}")
+        val cacheFile = File("${cacheDirectory}/${getCacheKey()}")
         val shouldUseCache = shouldUseCache(cacheFile, cache?.ttl ?: 600000)
         if (cacheFile.exists() && !shouldUseCache) {
             ObserverManager.notifyCacheEvent(
                 CacheEvent.CacheExpired(
-                    key = "",
+                    request = request,
                     ttlMs = cache?.ttl ?: 600000,
                     ageMs = getCacheAgeByMs(cacheFile),
                     expiredByMs = getCacheExpiredByMs(cacheFile, cache?.ttl ?: 600000),
@@ -101,14 +101,14 @@ internal class CacheManager(val context: Context, val command: Command) {
         } else if (!cacheFile.exists()) {
             ObserverManager.notifyCacheEvent(
                 CacheEvent.CacheMiss(
-                    key = "",
+                    request = request,
                 )
             )
         } else if (cacheFile.exists() && shouldUseCache) {
             cacheValue = cacheFile.readBytes()
             ObserverManager.notifyCacheEvent(
                 CacheEvent.CacheHit(
-                    key = "",
+                    request = request,
                     ttlMs = cache?.ttl ?: 600000,
                     ageMs = getCacheAgeByMs(cacheFile),
                 )
@@ -116,7 +116,7 @@ internal class CacheManager(val context: Context, val command: Command) {
         } else {
             ObserverManager.notifyCacheEvent(
                 CacheEvent.CacheMiss(
-                    key = "",
+                    request = request,
                 )
             )
         }

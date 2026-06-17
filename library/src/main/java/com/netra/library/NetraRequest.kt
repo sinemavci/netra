@@ -41,7 +41,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
     val header: Map<String, String>?
 ) {
     var id: String = UUID.randomUUID().mostSignificantBits.toString()
-    private var cacheManager = CacheManager(config.context, command)
+    private var cacheManager = CacheManager(config.context, this)
     private var offlinePolicyAction: OfflinePolicyAction? = null
     private var slowNetworkPolicyAction: SlowNetworkPolicyAction? = null
     private var retriesCount: Int? = null
