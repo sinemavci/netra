@@ -13,7 +13,7 @@ import com.netra.library.managers.LifecycleCallbacks
 import com.netra.library.managers.OfflineQueueManager
 import com.netra.library.managers.ObserverManager
 import com.netra.library.observers.INetraObserver
-import com.netra.library.observers.NetraNetworkListener
+import com.netra.library.observers.NetraEventListener
 import com.netra.library.utils.ResponseUtil
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -71,7 +71,7 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
                 }
             }
             client = OkHttpClient().newBuilder().eventListener(
-                NetraNetworkListener()
+                NetraEventListener()
             )
                 .addInterceptor(okHttpInterceptor).build()
             return this
@@ -84,7 +84,7 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
 
         fun circuitBreaker(failureThreshold: Int? = 5, retryDelayMs: Long? = 1000L): Builder {
             client = OkHttpClient().newBuilder().eventListener(
-                NetraNetworkListener()
+                NetraEventListener()
             )
                 .addInterceptor(CircuitBreakerInterceptor(failureThreshold, retryDelayMs)).build()
             return this
@@ -156,7 +156,7 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
             if (!::client.isInitialized) {
                 client =
                     OkHttpClient().newBuilder().addInterceptor(BaseInterceptor()).eventListener(
-                        NetraNetworkListener()
+                        NetraEventListener()
                     ).build()
             }
 

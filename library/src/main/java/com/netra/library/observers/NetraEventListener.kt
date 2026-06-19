@@ -5,7 +5,7 @@ import com.netra.library.managers.ObserverManager
 import okhttp3.Call
 import okhttp3.EventListener
 
-internal class NetraNetworkListener: EventListener() {
+internal class NetraEventListener: EventListener() {
     override fun callStart(call: Call) {
         val netraRequest = call.request().tag(NetraRequest::class.java)
         if (netraRequest != null) {
