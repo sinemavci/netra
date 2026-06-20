@@ -14,7 +14,7 @@ import com.netra.library.managers.ObserverManager
 import com.netra.library.managers.CancelRequestManager
 import com.netra.library.managers.OfflineQueueManager
 import com.netra.library.observers.INetraObserver
-import com.netra.library.observers.ResponseEvent
+import com.netra.library.observers.RequestEvent
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Headers
@@ -144,9 +144,9 @@ class NetraRequest<T> @PublishedApi internal constructor(
                         headers = response.headers.toMap()
                     )
                     callback(_response)
-                    ObserverManager.notifyResponseEvent(
-                        ResponseEvent.ResponseReceived(
-                            key = id,
+                    ObserverManager.notifyRequestEvent(
+                        RequestEvent.RequestSuccess(
+                            request = this,
                             response = _response,
                         )
                     )
@@ -154,9 +154,9 @@ class NetraRequest<T> @PublishedApi internal constructor(
             } catch (e: Error) {
                 val _response = getNetraFailedResponse(Exception(e.message))
                 callback(_response)
-                ObserverManager.notifyResponseEvent(
-                    ResponseEvent.ResponseReceived(
-                        key = id,
+                ObserverManager.notifyRequestEvent(
+                    RequestEvent.RequestFailed(
+                        request = this,
                         response = _response,
                     )
                 )
@@ -167,9 +167,9 @@ class NetraRequest<T> @PublishedApi internal constructor(
             response.close()
             val _response = getNetraFailedResponse(Exception(response.message))
             callback(_response)
-            ObserverManager.notifyResponseEvent(
-                ResponseEvent.ResponseReceived(
-                    key = id,
+            ObserverManager.notifyRequestEvent(
+                RequestEvent.RequestFailed(
+                    request = this,
                     response = _response,
                 )
             )
@@ -506,18 +506,18 @@ class NetraRequest<T> @PublishedApi internal constructor(
                                 isCache = true,
                             )
                             callback(_response)
-                            ObserverManager.notifyResponseEvent(
-                                ResponseEvent.ResponseReceived(
-                                    key = request.url.toString(),
+                            ObserverManager.notifyRequestEvent(
+                                RequestEvent.RequestSuccess(
+                                    request = this,
                                     response = _response,
                                 )
                             )
                         } else {
                             val _response = getNetraFailedResponse(Exception("Cache not found!"))
                             callback(_response)
-                            ObserverManager.notifyResponseEvent(
-                                ResponseEvent.ResponseReceived(
-                                    key = request.url.toString(),
+                            ObserverManager.notifyRequestEvent(
+                                RequestEvent.RequestSuccess(
+                                    request = this,
                                     response = _response,
                                 )
                             )

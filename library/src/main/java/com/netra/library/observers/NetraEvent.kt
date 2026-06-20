@@ -46,40 +46,48 @@ sealed interface CacheEvent {
     ) : CacheEvent
 }
 
-sealed interface RequestEvent {
+sealed interface QueueEvent {
     // Request could not execute now, so SDK persisted it for later replay.
     data class RequestQueued(
         val key: String,
         val queueOrder: Int,
         val createdAt: Long
-    ) : RequestEvent
+    ) : QueueEvent
 
     // No cache entry exists.
     data class QueuedRequestRestored(
         val key: String,
-    ) : RequestEvent
+    ) : QueueEvent
 
     // Fresh network response successfully written to cache.
     data class QueuedRequestExecuted(
         val key: String,
         val response: NetraResponse,
-    ) : RequestEvent
+    ) : QueueEvent
 
     // Queued network response failed.
     data class QueuedRequestFailed(
         val key: String,
-    ) : RequestEvent
-
-    data class RequestExecuted(
-        val key: String,
-        val request: NetraRequest<*>,
-    ): RequestEvent
+    ) : QueueEvent
 }
 
-sealed interface ResponseEvent {
-    data class ResponseReceived(
-        val key: String,
+sealed interface RequestEvent {
+    // Request executed.
+    data class RequestExecuted(
+        val request: NetraRequest<*>,
+    ) : RequestEvent
+
+    // Request completed seamlessly.
+    data class RequestSuccess(
+        val request: NetraRequest<*>,
         val response: NetraResponse,
-    ) : ResponseEvent
+    ) : RequestEvent
+
+    // Request failed.
+    data class RequestFailed(
+        val request: NetraRequest<*>,
+        val response: NetraResponse,
+    ) : RequestEvent
+
 }
 

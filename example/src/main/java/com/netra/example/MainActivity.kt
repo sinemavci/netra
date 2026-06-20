@@ -34,7 +34,7 @@ import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
 import com.netra.library.converter.NetraKotlinxConverter
 import com.netra.library.interceptors.NetraInterceptor
-import com.netra.library.observers.ResponseEvent
+import com.netra.library.observers.QueueEvent
 
 data class Repo(
     val id: Int,
@@ -153,13 +153,6 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                override fun onResponseReceived(event: ResponseEvent) {
-                    Log.e(
-                        "",
-                        "request NetworkEvent observer here: ${event}}"
-                    )
-                }
-
                 override fun onCacheChanged(event: CacheEvent) {
                     when (event) {
                         is CacheEvent.StaleCacheUsed -> {
@@ -201,38 +194,29 @@ class MainActivity : ComponentActivity() {
 
                 override fun onRequestChanged(event: RequestEvent) {
                     when (event) {
-                        is RequestEvent.RequestQueued -> {
-                            Log.e(
-                                "",
-                                "RequestQueued: ${event.key} queueOrder: ${event.queueOrder}"
-                            )
-                        }
-                        is RequestEvent.QueuedRequestRestored -> {
-                            Log.e(
-                                "",
-                                "QueuedRequestRestored: ${event.key}"
-                            )
-                        }
-                        is RequestEvent.QueuedRequestExecuted -> {
-                            Log.e(
-                                "",
-                                "QueuedRequestExecuted: ${event.key} statusCode: ${event.response.statusCode}"
-                            )
-                        }
-                        is RequestEvent.QueuedRequestFailed -> {
-                            Log.e(
-                                "",
-                                "QueuedRequestFailed: ${event.key}"
-                            )
-                        }
-
                         is RequestEvent.RequestExecuted -> {
                             Log.e(
                                 "",
-                                "RequestExecuted: ${event.key} id: ${event.request.id}"
+                                "RequestExecuted: ${event.request.command.url} "
+                            )
+                        }
+                        is RequestEvent.RequestSuccess -> {
+                            Log.e(
+                                "",
+                                "RequestSuccess: ${event.request.command.url} response: ${event.response.statusCode} ${event.response.data}"
+                            )
+                        }
+                        is RequestEvent.RequestFailed -> {
+                            Log.e(
+                                "",
+                                "RequestFailed: ${event.request.command.url} response: ${event.response.statusCode} ${event.response.data}"
                             )
                         }
                     }
+                }
+
+                override fun onQueueChanged(event: QueueEvent) {
+                    TODO("Not yet implemented")
                 }
             })
 

@@ -7,5 +7,5 @@ interface INetraObserver {
 
     fun onRequestChanged(event: RequestEvent)
 
-    fun onResponseReceived(event: ResponseEvent)
+    fun onQueueChanged(event: QueueEvent)
 }

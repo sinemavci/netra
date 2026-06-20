@@ -4,8 +4,8 @@ import android.util.Log
 import com.netra.library.observers.CacheEvent
 import com.netra.library.observers.INetraObserver
 import com.netra.library.observers.NetworkEvent
+import com.netra.library.observers.QueueEvent
 import com.netra.library.observers.RequestEvent
-import com.netra.library.observers.ResponseEvent
 import com.netra.library.utils.EventDispatcher
 
 internal object ObserverManager {
@@ -35,11 +35,11 @@ internal object ObserverManager {
         }
     }
 
-    fun notifyQueuedEvent(event: RequestEvent) {
+    fun notifyQueuedEvent(event: QueueEvent) {
         EventDispatcher.runOnMain {
             observers.toTypedArray().forEach { observer ->
                 try {
-                    observer.onRequestChanged(event)
+                    observer.onQueueChanged(event)
                 } catch (e: Exception) {
                     Log.e("MapRays", "Error in observer: ${e.message}", e)
                 }
@@ -52,18 +52,6 @@ internal object ObserverManager {
             observers.toTypedArray().forEach { observer ->
                 try {
                     observer.onRequestChanged(event)
-                } catch (e: Exception) {
-                    Log.e("MapRays", "Error in observer: ${e.message}", e)
-                }
-            }
-        }
-    }
-
-    fun notifyResponseEvent(event: ResponseEvent) {
-        EventDispatcher.runOnMain {
-            observers.toTypedArray().forEach { observer ->
-                try {
-                    observer.onResponseReceived(event)
                 } catch (e: Exception) {
                     Log.e("MapRays", "Error in observer: ${e.message}", e)
                 }

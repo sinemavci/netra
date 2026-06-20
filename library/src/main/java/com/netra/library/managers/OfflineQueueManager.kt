@@ -6,7 +6,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.netra.library.NetraResponse
 import com.netra.library.converter.NetraGsonConverter
-import com.netra.library.observers.RequestEvent
+import com.netra.library.observers.QueueEvent
 import com.netra.library.database.NetraDatabase
 import com.netra.library.database.PersistentRequest
 import com.netra.library.database.QueueDao
@@ -42,7 +42,7 @@ object OfflineQueueManager {
                 )
             )
             ObserverManager.notifyQueuedEvent(
-                RequestEvent.RequestQueued(
+                QueueEvent.RequestQueued(
                     key = request.url.toString(),
                     queueOrder = dao.getAllRequests().size,
                     createdAt = System.currentTimeMillis()
@@ -87,7 +87,7 @@ object OfflineQueueManager {
                     .headers(headerBuilder.build())
                     .build()
                 ObserverManager.notifyQueuedEvent(
-                    RequestEvent.QueuedRequestRestored(
+                    QueueEvent.QueuedRequestRestored(
                         key = request.url.toString(),
                     )
                 )
@@ -101,7 +101,7 @@ object OfflineQueueManager {
                             NetraGsonConverter().convert<Any>(response.body!!.bytes(), Any::class.java)
 
                         ObserverManager.notifyQueuedEvent(
-                            RequestEvent.QueuedRequestExecuted(
+                            QueueEvent.QueuedRequestExecuted(
                                 key = request.url.toString(),
                                 response = NetraResponse(
                                     data = mapOf("data" to convertedResult),
@@ -115,7 +115,7 @@ object OfflineQueueManager {
                         Log.d("Netra", "Successfully synced: ${savedReq.url} ${response.body}")
                     } else {
                         ObserverManager.notifyQueuedEvent(
-                            RequestEvent.QueuedRequestFailed(
+                            QueueEvent.QueuedRequestFailed(
                                 key = request.url.toString(),
                             )
                         )
@@ -124,7 +124,7 @@ object OfflineQueueManager {
                 } catch (e: IOException) {
                     Log.e("Netra", "Sync failed for ${savedReq.url}, keeping in queue.")
                     ObserverManager.notifyQueuedEvent(
-                        RequestEvent.QueuedRequestFailed(
+                        QueueEvent.QueuedRequestFailed(
                             key = request.url.toString(),
                         )
                     )

@@ -1,6 +1,5 @@
 package com.netra.library.interceptors
 
-import android.util.Log
 import com.netra.library.NetraRequest
 import com.netra.library.managers.ObserverManager
 import com.netra.library.observers.RequestEvent
@@ -15,7 +14,6 @@ class BaseInterceptor : Interceptor {
         if (netraRequest != null) {
             ObserverManager.notifyRequestEvent(
                 RequestEvent.RequestExecuted(
-                    key = request.url.toString(),
                     request = netraRequest
                 )
             )
