@@ -43,7 +43,7 @@ object OfflineQueueManager {
             )
             ObserverManager.notifyQueuedEvent(
                 QueueEvent.RequestQueued(
-                    key = request.url.toString(),
+                    url = request.url.toString(),
                     queueOrder = dao.getAllRequests().size,
                     createdAt = System.currentTimeMillis()
                 )
@@ -88,7 +88,7 @@ object OfflineQueueManager {
                     .build()
                 ObserverManager.notifyQueuedEvent(
                     QueueEvent.QueuedRequestRestored(
-                        key = request.url.toString(),
+                        url = request.url.toString(),
                     )
                 )
 
@@ -102,7 +102,7 @@ object OfflineQueueManager {
 
                         ObserverManager.notifyQueuedEvent(
                             QueueEvent.QueuedRequestExecuted(
-                                key = request.url.toString(),
+                                url = request.url.toString(),
                                 response = NetraResponse(
                                     data = mapOf("data" to convertedResult),
                                     statusCode = response.code,
@@ -116,7 +116,7 @@ object OfflineQueueManager {
                     } else {
                         ObserverManager.notifyQueuedEvent(
                             QueueEvent.QueuedRequestFailed(
-                                key = request.url.toString(),
+                                url = request.url.toString(),
                             )
                         )
                     }
@@ -125,7 +125,7 @@ object OfflineQueueManager {
                     Log.e("Netra", "Sync failed for ${savedReq.url}, keeping in queue.")
                     ObserverManager.notifyQueuedEvent(
                         QueueEvent.QueuedRequestFailed(
-                            key = request.url.toString(),
+                            url = request.url.toString(),
                         )
                     )
                 }
