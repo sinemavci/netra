@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
                     .build()
                 client.post("/upload", body)
                     .asObject<Any>()
-                    .withCache(Cache(null))
+                    .withCache(Cache())
                     .whenOffline(OfflinePolicyAction.THROW_ERROR)
                     .whenSlowNetwork(SlowNetworkPolicyAction.USE_CACHE)
                     .enqueue { result ->
@@ -88,7 +88,7 @@ class MainActivity : ComponentActivity() {
             .build()
         client.get("/image")
             .asObject<ByteArray>()
-            .withCache(Cache(null))
+            .withCache(Cache())
             .whenOffline(OfflinePolicyAction.USE_CACHE)
             .cancelWhenDestroyed()
             .executeStream(
@@ -138,13 +138,13 @@ class MainActivity : ComponentActivity() {
 //            )
 //            .build()
 
-        val request = client!!.get("/?status=500&delay=6000")
+        val request = client!!.get("/?status=200&delay=6000")
             .slowMode()
             .addHeaders(mapOf("headercustom2" to "custom"))
             .asObject<Any>()
             .withCache(Cache())
             .cancelWhenDestroyed()
-            .whenOffline(OfflinePolicyAction.QUEUE)
+            .whenOffline(OfflinePolicyAction.USE_CACHE)
             .addObserver(object : INetraObserver {
                 override fun onNetworkChanged(event: NetworkEvent) {
                     Log.e(
@@ -254,7 +254,7 @@ class MainActivity : ComponentActivity() {
         val body = NetraRequestBody.create(json)
         val call = client.post("/users", body)
             .asObject<Any>()
-            .withCache(Cache(null))
+            .withCache(Cache())
         val response = call.execute()
         Log.e(
             "response in main kt",
@@ -283,7 +283,7 @@ class MainActivity : ComponentActivity() {
         //client.get("/?status=200")
         client.put("/users/1", body)
             .asObject<Any>()
-            .withCache(Cache(null))
+            .withCache(Cache())
             .enqueue { result ->
                 Log.e("result", result?.statusCode.toString() )
             }
@@ -305,7 +305,7 @@ class MainActivity : ComponentActivity() {
         //client.get("/?status=200")
         client.patch("/users/1", body)
             .asObject<Any>()
-            .withCache(Cache(null))
+            .withCache(Cache())
             .enqueue { result ->
                 Log.e("result", result?.statusCode.toString() )
             }
@@ -321,7 +321,7 @@ class MainActivity : ComponentActivity() {
         //client.get("/?status=200")
         client.delete("/users/1")
             .asObject<Any>()
-            .withCache(Cache(null))
+            .withCache(Cache())
             .enqueue { result ->
                 Log.e("result", result?.statusCode.toString() )
             }

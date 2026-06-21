@@ -108,7 +108,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
     private fun handleOnFailure(call: Call, e: IOException, callback: (NetraResponse?) -> Unit) {
         CancelRequestManager.remove(id)
         if (!call.isCanceled()) {
-            val cache = cacheManager.getCacheIfValid()
+            val cache = cacheManager.getCache(allowExpired = false)
             if (cache?.isNotEmpty() == true) {
                 val response = handleConvertedResponse(cache)
                 callback(
@@ -391,7 +391,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
             } else {
                 when (slowNetworkPolicyAction) {
                     is SlowNetworkPolicyAction.USE_CACHE -> {
-                        val cache = cacheManager.getCacheAllowExpired()
+                        val cache = cacheManager.getCache(allowExpired = true)
                         netraResponse = if (cache?.isNotEmpty() == true) {
                             NetraResponse(
                                 data = mapOf("data" to handleConvertedResponse(cache)),
@@ -446,7 +446,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 }
 
                 is OfflinePolicyAction.USE_CACHE -> {
-                    val cache = cacheManager.getCacheAllowExpired()
+                    val cache = cacheManager.getCache(allowExpired = true)
                     netraResponse = if (cache?.isNotEmpty() == true) {
                         NetraResponse(
                             data = mapOf("data" to handleConvertedResponse(cache)),
@@ -497,7 +497,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
             } else {
                 when (slowNetworkPolicyAction) {
                     is SlowNetworkPolicyAction.USE_CACHE -> {
-                        val cache = cacheManager.getCacheAllowExpired()
+                        val cache = cacheManager.getCache(allowExpired = true)
                         if (cache?.isNotEmpty() == true) {
                             val _response = NetraResponse(
                                 data = mapOf("data" to handleConvertedResponse(cache)),
@@ -577,7 +577,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 }
 
                 is OfflinePolicyAction.USE_CACHE -> {
-                    val cache = cacheManager.getCacheAllowExpired()
+                    val cache = cacheManager.getCache(allowExpired = true)
                     if (cache?.isNotEmpty() == true) {
                         callback(
                             NetraResponse(

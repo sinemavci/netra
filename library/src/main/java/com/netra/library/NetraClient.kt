@@ -10,8 +10,10 @@ import com.netra.library.interceptors.CircuitBreakerInterceptor
 import com.netra.library.interceptors.NetraInterceptor
 import com.netra.library.managers.CancelRequestManager
 import com.netra.library.managers.LifecycleCallbacks
+import com.netra.library.managers.MemoryCacheEntry
 import com.netra.library.managers.OfflineQueueManager
 import com.netra.library.managers.ObserverManager
+import com.netra.library.managers.cacheSize
 import com.netra.library.observers.INetraObserver
 import com.netra.library.utils.ResponseUtil
 import okhttp3.Interceptor
@@ -21,8 +23,6 @@ import okhttp3.Response
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
-val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
-val cacheSize = maxMemory / 8
 class NetraClient private constructor(internal val config: NetraClientConfig) {
     var id: String = UUID.randomUUID().mostSignificantBits.toString()
 
@@ -140,9 +140,9 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
 
         internal var lastFailureTime: Long = 0
 
-        internal val memoryCache = object : LruCache<String, ByteArray>(cacheSize) {
-            override fun sizeOf(key: String, bitmap: ByteArray): Int {
-                return bitmap.size / 1024
+        internal val memoryCache = object : LruCache<String, MemoryCacheEntry>(cacheSize) {
+            override fun sizeOf(key: String, value: MemoryCacheEntry): Int {
+                return value.data.size / 1024
             }
         }
         internal lateinit var client: OkHttpClient
