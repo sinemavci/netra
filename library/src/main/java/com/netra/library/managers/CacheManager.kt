@@ -5,6 +5,7 @@ import com.netra.library.Cache
 import com.netra.library.observers.CacheEvent
 import com.netra.library.NetraClient
 import com.netra.library.NetraRequest
+import com.netra.library.NetraResponse
 import java.io.File
 import java.security.MessageDigest
 import kotlin.Long
@@ -75,7 +76,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
         }
     }
 
-    fun getCache(allowExpired: Boolean): ByteArray? {
+    fun getCache(allowExpired: Boolean): NetraResponse {
         val cacheKey = getCacheKey()
         val ttl = cache?.ttl ?: Cache.TTL_DEFAULT
         val now = System.currentTimeMillis()
@@ -85,21 +86,27 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
             val memAgeMs = now - memEntry.timestamp
             if (memAgeMs < ttl) {
                 ObserverManager.notifyCacheEvent(CacheEvent.CacheHit(request, ttl, memAgeMs))
-                return memEntry.data
+                val convertedResponse = request.handleConvertedResponse(memEntry.data)
+                return NetraResponse(
+                    data = mapOf("data" to convertedResponse),
+                    statusCode = 200,
+                    statusMessage = null,
+                    isCache = true,
+                )
             }
         }
 
         val cacheFile = File(context.cacheDir, cacheKey)
         if (!cacheFile.exists()) {
             ObserverManager.notifyCacheEvent(CacheEvent.CacheMiss(request))
-            return null
+            return NetraRequest.getNetraFailedResponse(Exception("Cache not found!"))
         }
 
         val ageMs = getCacheAgeByMs(cacheFile)
         val isExpired = ageMs >= ttl
         val cacheBytes = cacheFile.readBytes()
 
-        return when {
+        val result = when {
             !isExpired -> {
                 ObserverManager.notifyCacheEvent(CacheEvent.CacheHit(request, ttl, ageMs))
                 cacheBytes
@@ -118,6 +125,17 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
                 )
                 null
             }
+        }
+        if (result != null) {
+            val convertedResponse = request.handleConvertedResponse(result)
+            return NetraResponse(
+                data = mapOf("data" to convertedResponse),
+                statusCode = 200,
+                statusMessage = null,
+                isCache = true,
+            )
+        } else {
+            return NetraRequest.getNetraFailedResponse(Exception("Cache not found!"))
         }
     }
 }

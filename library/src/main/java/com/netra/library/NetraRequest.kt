@@ -98,34 +98,11 @@ class NetraRequest<T> @PublishedApi internal constructor(
         }
     }
 
-    private fun handleConvertedResponse(byteArray: ByteArray): T {
-        if (config.converter != null) {
-            val convertedResult: T =
-                config.converter.convert(byteArray, type)
-            return convertedResult
-        } else {
-            @Suppress("UNCHECKED_CAST")
-            return byteArray as T
-        }
-    }
-
     private fun handleOnFailure(call: Call, e: IOException, callback: (NetraResponse?) -> Unit) {
         CancelRequestManager.remove(id)
         if (!call.isCanceled()) {
-            val cache = cacheManager.getCache(allowExpired = false)
-            if (cache?.isNotEmpty() == true) {
-                val response = handleConvertedResponse(cache)
-                callback(
-                    NetraResponse(
-                        data = mapOf("data" to response),
-                        statusCode = 200,
-                        statusMessage = null,
-                        isCache = true,
-                    )
-                )
-            } else {
-                callback(getNetraFailedResponse(Exception("Cache not found!")))
-            }
+            val cacheResponse = cacheManager.getCache(allowExpired = false)
+            callback(cacheResponse)
         }
     }
 
@@ -395,17 +372,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
             } else {
                 when (slowNetworkPolicyAction) {
                     is SlowNetworkPolicyAction.USE_CACHE -> {
-                        val cache = cacheManager.getCache(allowExpired = true)
-                        netraResponse = if (cache?.isNotEmpty() == true) {
-                            NetraResponse(
-                                data = mapOf("data" to handleConvertedResponse(cache)),
-                                statusCode = 200,
-                                statusMessage = null,
-                                isCache = true,
-                            )
-                        } else {
-                            getNetraFailedResponse(Exception("Cache not found!"))
-                        }
+                        netraResponse = cacheManager.getCache(allowExpired = true)
                     }
 
                     is SlowNetworkPolicyAction.TIMEOUT -> {
@@ -450,17 +417,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 }
 
                 is OfflinePolicyAction.USE_CACHE -> {
-                    val cache = cacheManager.getCache(allowExpired = true)
-                    netraResponse = if (cache?.isNotEmpty() == true) {
-                        NetraResponse(
-                            data = mapOf("data" to handleConvertedResponse(cache)),
-                            statusCode = 200,
-                            statusMessage = null,
-                            isCache = true,
-                        )
-                    } else {
-                        getNetraFailedResponse(Exception("Cache not found!"))
-                    }
+                    netraResponse = cacheManager.getCache(allowExpired = true)
                 }
 
                 is OfflinePolicyAction.THROW_ERROR -> {
@@ -501,31 +458,14 @@ class NetraRequest<T> @PublishedApi internal constructor(
             } else {
                 when (slowNetworkPolicyAction) {
                     is SlowNetworkPolicyAction.USE_CACHE -> {
-                        val cache = cacheManager.getCache(allowExpired = true)
-                        if (cache?.isNotEmpty() == true) {
-                            val _response = NetraResponse(
-                                data = mapOf("data" to handleConvertedResponse(cache)),
-                                statusCode = 200,
-                                statusMessage = null,
-                                isCache = true,
+                        val cacheResponse = cacheManager.getCache(allowExpired = true)
+                        callback(cacheResponse)
+                        ObserverManager.notifyRequestEvent(
+                            RequestEvent.RequestSuccess(
+                                request = this,
+                                response = cacheResponse,
                             )
-                            callback(_response)
-                            ObserverManager.notifyRequestEvent(
-                                RequestEvent.RequestSuccess(
-                                    request = this,
-                                    response = _response,
-                                )
-                            )
-                        } else {
-                            val _response = getNetraFailedResponse(Exception("Cache not found!"))
-                            callback(_response)
-                            ObserverManager.notifyRequestEvent(
-                                RequestEvent.RequestSuccess(
-                                    request = this,
-                                    response = _response,
-                                )
-                            )
-                        }
+                        )
                     }
 
                     is SlowNetworkPolicyAction.TIMEOUT -> {
@@ -581,19 +521,8 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 }
 
                 is OfflinePolicyAction.USE_CACHE -> {
-                    val cache = cacheManager.getCache(allowExpired = true)
-                    if (cache?.isNotEmpty() == true) {
-                        callback(
-                            NetraResponse(
-                                data = mapOf("data" to handleConvertedResponse(cache)),
-                                statusCode = 200,
-                                statusMessage = null,
-                                isCache = true,
-                            )
-                        )
-                    } else {
-                        callback(getNetraFailedResponse(Exception("Cache not found!")))
-                    }
+                    val cacheResponse = cacheManager.getCache(allowExpired = true)
+                    callback(cacheResponse)
                 }
 
                 is OfflinePolicyAction.THROW_ERROR -> {
@@ -620,7 +549,19 @@ class NetraRequest<T> @PublishedApi internal constructor(
         )
     }
 
+    internal fun handleConvertedResponse(byteArray: ByteArray): T {
+        if (config.converter != null) {
+            val convertedResult: T =
+                config.converter.convert(byteArray, type)
+            return convertedResult
+        } else {
+            @Suppress("UNCHECKED_CAST")
+            return byteArray as T
+        }
+    }
+
     companion object {
+
         internal fun getNetraFailedResponse(e: Exception?): NetraResponse {
             val (code, message) = when (e) {
                 is ConnectException -> 503 to "Service Unavailable: ${e.message}"
