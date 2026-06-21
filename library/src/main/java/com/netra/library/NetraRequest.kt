@@ -50,7 +50,11 @@ class NetraRequest<T> @PublishedApi internal constructor(
     private var isCancelWhenDestroyed = false;
 
     fun withCache(cache: Cache): NetraRequest<T> {
-        cacheManager.cache = cache
+        if (this.command is Command.Get) {
+            cacheManager.cache = cache
+            return this
+        }
+
         return this
     }
 
