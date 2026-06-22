@@ -15,6 +15,7 @@ import com.netra.library.managers.OfflineQueueManager
 import com.netra.library.managers.ObserverManager
 import com.netra.library.managers.cacheSize
 import com.netra.library.observers.INetraObserver
+import com.netra.library.observers.RequestEvent
 import com.netra.library.utils.ResponseUtil
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -53,6 +54,14 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
             val okHttpInterceptor = object : Interceptor {
                 override fun intercept(chain: Interceptor.Chain): Response {
                     val okHttpRequest = chain.request()
+                    val netraRequest = okHttpRequest.tag(NetraRequest::class.java)
+                    if (netraRequest != null) {
+                        ObserverManager.notifyRequestEvent(
+                            RequestEvent.RequestExecuted(
+                                request = netraRequest
+                            )
+                        )
+                    }
 
                     val netraChain = object : NetraInterceptor.NetraChain {
                         override fun request(): Request {
@@ -61,12 +70,12 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
 
                         override fun proceed(request: Request): NetraResponse {
                             val okHttpResponse = chain.proceed(request)
-                            return ResponseUtil.convertOkHttpResponseToNetra(okHttpResponse)
+                            return ResponseUtil.okHttpResponseToNetra(okHttpResponse)
                         }
                     }
 
                     val netraResponse = netraInterceptor.intercept(netraChain)
-                    return ResponseUtil.convertNetraResponseToOkHttp(netraResponse, okHttpRequest)
+                    return ResponseUtil.netraResponseToOkHttp(netraResponse, okHttpRequest)
                 }
             }
             client = OkHttpClient().newBuilder()
