@@ -119,8 +119,8 @@ class NetraRequest<T> @PublishedApi internal constructor(
                     val convertedResponse = handleConvertedResponse(it)
                     val _response = NetraResponse(
                         data = mapOf("data" to convertedResponse),
-                        statusCode = 200,
-                        statusMessage = null,
+                        statusCode = response.code,
+                        statusMessage = response.message,
                         isCache = false,
                         headers = response.headers.toMap()
                     )
