@@ -2,7 +2,9 @@ package com.netra.library.interceptors
 
 import android.util.Log
 import com.netra.library.NetraClient
-import com.netra.library.StatusReporter
+import com.netra.library.NetraRequest
+import com.netra.library.managers.ObserverManager
+import com.netra.library.observers.RequestEvent
 import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
@@ -19,7 +21,14 @@ class CircuitBreakerInterceptor(failureThreshold: Int? = 5, val retryDelayMs: Lo
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
-        val reporter = request.tag(StatusReporter::class.java)
+        val netraRequest = request.tag(NetraRequest::class.java)
+        if (netraRequest != null) {
+            ObserverManager.notifyRequestEvent(
+                RequestEvent.RequestExecuted(
+                    request = netraRequest
+                )
+            )
+        }
 
         if (NetraClient.globalFailureCount.get() >= maxRetries) {
             val timeSinceLastFailure = System.currentTimeMillis() - NetraClient.lastFailureTime

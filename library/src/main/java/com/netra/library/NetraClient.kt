@@ -70,7 +70,6 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
                 }
             }
             client = OkHttpClient().newBuilder()
-                .addInterceptor(BaseInterceptor())
                 .addInterceptor(okHttpInterceptor).build()
             return this
         }
@@ -81,7 +80,7 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
         }
 
         fun circuitBreaker(failureThreshold: Int? = 5, retryDelayMs: Long? = 1000L): Builder {
-            client = OkHttpClient().newBuilder().addInterceptor(BaseInterceptor())
+            client = OkHttpClient().newBuilder()
                 .addInterceptor(CircuitBreakerInterceptor(failureThreshold, retryDelayMs)).build()
             return this
         }
@@ -151,8 +150,7 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
         internal fun initCompanion(context: Context) {
             if (!::client.isInitialized) {
                 client =
-                    OkHttpClient().newBuilder().addInterceptor(BaseInterceptor())
-                        .addInterceptor(BaseInterceptor()).build()
+                    OkHttpClient().newBuilder().addInterceptor(BaseInterceptor()).build()
             }
 
             OfflineQueueManager.init(context.applicationContext)

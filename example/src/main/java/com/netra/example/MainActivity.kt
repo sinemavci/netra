@@ -221,9 +221,6 @@ class MainActivity : ComponentActivity() {
             })
 
             request.enqueue { result ->
-                result?.headers?.forEach { string, string1 ->
-                    Log.e("", "netra enqueue: headers: ${string} ${string1}")
-                }
                 Log.e(
                     "result is success",
                     "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
@@ -331,6 +328,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         client = NetraClient.Builder(applicationContext)
             .baseUrl("http://10.0.2.2:3001")
+            .circuitBreaker()
             .addInterceptor(object : NetraInterceptor {
                 override fun intercept(chain: NetraInterceptor.NetraChain): NetraResponse {
 //                    var attempt = 0
@@ -338,6 +336,7 @@ class MainActivity : ComponentActivity() {
 //
 //                    while (attempt < 5) {
 //                        try {
+                    Log.e("", "custom interceptor")
                            chain.proceed(chain.request())
 //                            Log.e("", "attempt: ${attempt} response here: ${response.statusCode}")
 //                            return response
@@ -352,8 +351,8 @@ class MainActivity : ComponentActivity() {
                         data = mapOf("data" to {
                             "here" to "here"
                         }),
-                        statusCode = 200,
-                        statusMessage = null,
+                        statusCode = 204,
+                        statusMessage = "custom interceptor response",
                         isCache = false,
                     )
                 }
