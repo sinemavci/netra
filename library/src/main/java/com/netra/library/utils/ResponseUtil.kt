@@ -2,8 +2,21 @@ package com.netra.library.utils
 
 import com.netra.library.NetraRequest
 import com.netra.library.NetraResponse
+import com.netra.library.exceptions.NetraConnectionException
+import com.netra.library.exceptions.NetraDnsException
+import com.netra.library.exceptions.NetraException
+import com.netra.library.exceptions.NetraNetworkException
+import com.netra.library.exceptions.NetraSocketException
+import com.netra.library.exceptions.NetraSslException
+import com.netra.library.exceptions.NetraTimeoutException
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.ResponseBody.Companion.toResponseBody
+import java.net.ConnectException
+import java.net.SocketException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import javax.net.ssl.SSLException
+import javax.net.ssl.SSLKeyException
 
 internal object ResponseUtil {
     fun okHttpResponseToNetra(response: okhttp3.Response, request: NetraRequest<*>): NetraResponse {
@@ -32,9 +45,7 @@ internal object ResponseUtil {
         request: okhttp3.Request
     ): okhttp3.Response {
         val jsonString = com.google.gson.Gson().toJson(netraResponse.data)
-
         val responseBody = jsonString.toResponseBody("application/json".toMediaTypeOrNull())
-
         val headersBuilder = okhttp3.Headers.Builder()
         netraResponse.headers?.forEach { (key, value) ->
             headersBuilder.add(key, value)
@@ -49,4 +60,28 @@ internal object ResponseUtil {
             .headers(headersBuilder.build())
             .build()
     }
+
+    fun mapException(e: Exception): NetraException =
+        when (e) {
+            is ConnectException ->
+                NetraConnectionException(e)
+
+            is SocketException ->
+                NetraSocketException(e)
+
+            is SocketTimeoutException ->
+                NetraTimeoutException(e)
+
+            is UnknownHostException ->
+                NetraDnsException(e)
+
+            is SSLKeyException ->
+                NetraSslException(e)
+
+            is SSLException ->
+                NetraSslException(e)
+
+            else ->
+                NetraNetworkException(e.message, e)
+        }
 }
