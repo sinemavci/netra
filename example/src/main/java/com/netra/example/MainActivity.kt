@@ -27,13 +27,12 @@ import com.netra.library.observers.INetraObserver
 import com.netra.library.NetraClient
 import com.netra.library.NetraPart
 import com.netra.library.NetraRequestBody
-import com.netra.library.NetraResponse
+import com.netra.library.converter.NetraGsonConverter
 import com.netra.library.observers.NetworkEvent
 import com.netra.library.observers.RequestEvent
 import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
 import com.netra.library.converter.NetraKotlinxConverter
-import com.netra.library.interceptors.NetraInterceptor
 import com.netra.library.observers.QueueEvent
 
 data class Repo(
@@ -327,37 +326,38 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         client = NetraClient.Builder(applicationContext)
+            .addConverterFactory(NetraGsonConverter())
             .baseUrl("http://10.0.2.2:3001")
-            .circuitBreaker()
-            .addInterceptor(object : NetraInterceptor {
-                override fun intercept(chain: NetraInterceptor.NetraChain): NetraResponse {
-//                    var attempt = 0
-//                    var lastException: IOException? = null
+//            .circuitBreaker()
+//            .addInterceptor(object : NetraInterceptor {
+//                override fun intercept(chain: NetraInterceptor.NetraChain): NetraResponse {
+////                    var attempt = 0
+////                    var lastException: IOException? = null
+////
+////                    while (attempt < 5) {
+////                        try {
+//                    Log.e("", "custom interceptor")
+//                           chain.proceed(chain.request())
+////                            Log.e("", "attempt: ${attempt} response here: ${response.statusCode}")
+////                            return response
+////                        } catch (e: IOException) {
+////                            lastException = e
+////                            attempt++
+////                            Thread.sleep(2000L * attempt)
+////                        }
+////                    }
+////                    throw lastException!!
+//                    return NetraResponse(
+//                        data = mapOf("data" to {
+//                            "here" to "here"
+//                        }),
+//                        statusCode = 204,
+//                        statusMessage = "custom interceptor response",
+//                        isCache = false,
+//                    )
+//                }
 //
-//                    while (attempt < 5) {
-//                        try {
-                    Log.e("", "custom interceptor")
-                           chain.proceed(chain.request())
-//                            Log.e("", "attempt: ${attempt} response here: ${response.statusCode}")
-//                            return response
-//                        } catch (e: IOException) {
-//                            lastException = e
-//                            attempt++
-//                            Thread.sleep(2000L * attempt)
-//                        }
-//                    }
-//                    throw lastException!!
-                    return NetraResponse(
-                        data = mapOf("data" to {
-                            "here" to "here"
-                        }),
-                        statusCode = 204,
-                        statusMessage = "custom interceptor response",
-                        isCache = false,
-                    )
-                }
-
-            })
+//            })
             .build()
         enableEdgeToEdge()
         setContent {

@@ -70,7 +70,7 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
 
                         override fun proceed(request: Request): NetraResponse {
                             val okHttpResponse = chain.proceed(request)
-                            return ResponseUtil.okHttpResponseToNetra(okHttpResponse)
+                            return ResponseUtil.okHttpResponseToNetra(okHttpResponse, netraRequest!!)
                         }
                     }
 

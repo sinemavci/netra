@@ -15,6 +15,7 @@ import com.netra.library.managers.CancelRequestManager
 import com.netra.library.managers.OfflineQueueManager
 import com.netra.library.observers.INetraObserver
 import com.netra.library.observers.RequestEvent
+import com.netra.library.utils.ResponseUtil
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Headers
@@ -113,25 +114,15 @@ class NetraRequest<T> @PublishedApi internal constructor(
         CancelRequestManager.remove(id)
         if (response.isSuccessful) {
             try {
-                val bodyBytes = response.body?.bytes()
-                bodyBytes?.let {
-                    cacheManager.writeCacheResponse(it)
-                    val convertedResponse = handleConvertedResponse(it)
-                    val _response = NetraResponse(
-                        data = mapOf("data" to convertedResponse),
-                        statusCode = response.code,
-                        statusMessage = response.message,
-                        isCache = false,
-                        headers = response.headers.toMap()
+                val _response = ResponseUtil.okHttpResponseToNetra(response, this)
+                callback(_response)
+                cacheManager.writeCacheResponse(_response)
+                ObserverManager.notifyRequestEvent(
+                    RequestEvent.RequestSuccess(
+                        request = this,
+                        response = _response,
                     )
-                    callback(_response)
-                    ObserverManager.notifyRequestEvent(
-                        RequestEvent.RequestSuccess(
-                            request = this,
-                            response = _response,
-                        )
-                    )
-                }
+                )
             } catch (e: Error) {
                 val _response = getNetraFailedResponse(Exception(e.message))
                 callback(_response)
@@ -263,18 +254,8 @@ class NetraRequest<T> @PublishedApi internal constructor(
         executor!!.execute({
             try {
                 val response = netraCall.call.execute()
-                val bodyBytes = response.body?.bytes()
-                bodyBytes?.let {
-                    cacheManager.writeCacheResponse(it)
-                    _response = NetraResponse(
-                        data = mapOf("data" to handleConvertedResponse(it)),
-                        statusCode = response.code,
-                        statusMessage = response.message,
-                        isCache = false,
-                        headers = response.headers.toMap()
-                    )
-                }
-
+                _response = ResponseUtil.okHttpResponseToNetra(response, this)
+                cacheManager.writeCacheResponse(_response)
             } catch (e: IOException) {
                 _response = getNetraFailedResponse(e)
             } finally {
@@ -306,13 +287,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
             executor!!.execute({
                 try {
                     val response = config.client.newCall(request).execute()
-                    _netraResponse = NetraResponse(
-                        data = mapOf("data" to response.body?.bytes()),
-                        statusCode = response.code,
-                        statusMessage = response.message,
-                        isCache = false,
-                        headers = response.headers.toMap()
-                    )
+                    _netraResponse = ResponseUtil.okHttpResponseToNetra(response, this)
                 } catch (e: IOException) {
                     _netraResponse = getNetraFailedResponse(e)
                 } finally {
