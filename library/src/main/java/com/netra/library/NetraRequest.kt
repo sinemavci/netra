@@ -8,6 +8,7 @@ import com.netra.library.enums.Command
 import com.netra.library.enums.NetworkSeverity
 import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
+import com.netra.library.exceptions.NetraException
 import com.netra.library.interceptors.RetryInterceptor
 import com.netra.library.managers.CacheManager
 import com.netra.library.managers.ObserverManager
@@ -99,23 +100,23 @@ class NetraRequest<T> @PublishedApi internal constructor(
         }
     }
 
-    private fun handleOnFailure(call: Call, e: IOException, callback: (NetraResponse?) -> Unit) {
+    private fun handleOnFailure(call: Call, e: IOException, callback: (NetraResponse?, NetraException?) -> Unit) {
         CancelRequestManager.remove(id)
         if (!call.isCanceled()) {
             val cacheResponse = cacheManager.getCache(allowExpired = false)
-            callback(cacheResponse)
+            callback(cacheResponse, if (cacheResponse == null) ResponseUtil.mapException(e) else null)
         }
     }
 
     private fun Headers.toMap(): Map<String, String> =
         names().associateWith { name -> get(name)!! }
 
-    private fun handleOnResponse(response: Response, callback: (NetraResponse?) -> Unit) {
+    private fun handleOnResponse(response: Response, callback: (NetraResponse?, NetraException?) -> Unit) {
         CancelRequestManager.remove(id)
-        if (response.isSuccessful) {
-            try {
-                val _response = ResponseUtil.okHttpResponseToNetra(response, this)
-                callback(_response)
+        try {
+            val _response = ResponseUtil.okHttpResponseToNetra(response, this)
+            callback(_response, null)
+            if(response.isSuccessful) {
                 cacheManager.writeCacheResponse(_response)
                 ObserverManager.notifyRequestEvent(
                     RequestEvent.RequestSuccess(
@@ -123,28 +124,25 @@ class NetraRequest<T> @PublishedApi internal constructor(
                         response = _response,
                     )
                 )
-            } catch (e: Error) {
-                val _response = getNetraFailedResponse(Exception(e.message))
-                callback(_response)
+            } else {
                 ObserverManager.notifyRequestEvent(
                     RequestEvent.RequestFailed(
                         request = this,
                         response = _response,
                     )
                 )
-            } finally {
-                response.close()
             }
-        } else {
+        } catch (e: Exception) {
+            callback(null, ResponseUtil.mapException(e))
+            //todo: Modify RequestFailed so that it take as nullable response.
+//                ObserverManager.notifyRequestEvent(
+//                    RequestEvent.RequestFailed(
+//                        request = this,
+//                        response = _response,
+//                    )
+//                )
+        } finally {
             response.close()
-            val _response = getNetraFailedResponse(Exception(response.message))
-            callback(_response)
-            ObserverManager.notifyRequestEvent(
-                RequestEvent.RequestFailed(
-                    request = this,
-                    response = _response,
-                )
-            )
         }
     }
 
@@ -249,20 +247,24 @@ class NetraRequest<T> @PublishedApi internal constructor(
     }
 
     private fun executeCommand(netraCall: NetraCall): NetraResponse {
+        var error: Exception? = null
         val latch = CountDownLatch(1)
         lateinit var _response: NetraResponse
+
         executor!!.execute({
             try {
                 val response = netraCall.call.execute()
                 _response = ResponseUtil.okHttpResponseToNetra(response, this)
                 cacheManager.writeCacheResponse(_response)
             } catch (e: IOException) {
-                _response = getNetraFailedResponse(e)
+                error = ResponseUtil.mapException(e)
             } finally {
                 latch.countDown()
             }
         })
         latch.await()
+
+        error?.let { throw it }
         return _response
     }
 
@@ -278,9 +280,9 @@ class NetraRequest<T> @PublishedApi internal constructor(
     }
 
     private fun handleWaitPolicy(request: Request): NetraResponse {
+        var error: Exception? = null
         val latch = CountDownLatch(1)
         lateinit var _netraResponse: NetraResponse
-        Log.e("", "slow network policy uses WAIT")
         Handler(Looper.getMainLooper()).postDelayed({
             val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
             CancelRequestManager.add(id, call)
@@ -289,13 +291,15 @@ class NetraRequest<T> @PublishedApi internal constructor(
                     val response = config.client.newCall(request).execute()
                     _netraResponse = ResponseUtil.okHttpResponseToNetra(response, this)
                 } catch (e: IOException) {
-                    _netraResponse = getNetraFailedResponse(e)
+                    error = ResponseUtil.mapException(e)
                 } finally {
                     latch.countDown()
                 }
             })
         }, (slowNetworkPolicyAction as SlowNetworkPolicyAction.WAIT).delay)
         latch.await()
+
+        error?.let { throw it }
         return _netraResponse
     }
 
@@ -347,7 +351,8 @@ class NetraRequest<T> @PublishedApi internal constructor(
             } else {
                 when (slowNetworkPolicyAction) {
                     is SlowNetworkPolicyAction.USE_CACHE -> {
-                        netraResponse = cacheManager.getCache(allowExpired = true)
+                        val _response = cacheManager.getCache(allowExpired = true)
+                        netraResponse = _response ?: executeCommand(netraCall)
                     }
 
                     is SlowNetworkPolicyAction.TIMEOUT -> {
@@ -371,9 +376,9 @@ class NetraRequest<T> @PublishedApi internal constructor(
         } else {
             when (offlinePolicyAction) {
                 is OfflinePolicyAction.QUEUE -> {
-                    Log.e("", "sdk uses OfflinePolicyAction.QUEUE")
                     OfflineQueueManager.push(netraCall.call.request())
-                    netraResponse = getNetraFailedResponse(null)
+                    //todo
+                   // netraResponse = getNetraFailedResponse(null)
                 }
 
                 is OfflinePolicyAction.RETRY -> {
@@ -392,22 +397,22 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 }
 
                 is OfflinePolicyAction.USE_CACHE -> {
-                    netraResponse = cacheManager.getCache(allowExpired = true)
+                    netraResponse = cacheManager.getCache(allowExpired = true) ?: executeCommand(netraCall)
                 }
 
                 is OfflinePolicyAction.THROW_ERROR -> {
-                    netraResponse = getNetraFailedResponse(ConnectException())
+                    netraResponse = cacheManager.getCache(allowExpired = true) ?: executeCommand(netraCall)
                 }
 
                 else -> {
-                    netraResponse = getNetraFailedResponse(ConnectException())
+                    netraResponse = cacheManager.getCache(allowExpired = true) ?: executeCommand(netraCall)
                 }
             }
         }
         return netraResponse
     }
 
-    private fun enqueueCommand(netraCall: NetraCall, callback: (NetraResponse?) -> Unit) {
+    private fun enqueueCommand(netraCall: NetraCall, callback: (NetraResponse?, NetraException?) -> Unit) {
         netraCall.call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 handleOnFailure(call, e, callback)
@@ -419,7 +424,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
         })
     }
 
-    fun enqueue(callback: (NetraResponse?) -> Unit) {
+    fun enqueue(callback: (NetraResponse?, NetraException?) -> Unit) {
         val reporter = StatusReporter(callback)
         val request = getRequest(reporter)
         val networkSeverity = connectivityManager.getNetworkSpeedState()
@@ -434,13 +439,19 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 when (slowNetworkPolicyAction) {
                     is SlowNetworkPolicyAction.USE_CACHE -> {
                         val cacheResponse = cacheManager.getCache(allowExpired = true)
-                        callback(cacheResponse)
-                        ObserverManager.notifyRequestEvent(
-                            RequestEvent.RequestSuccess(
-                                request = this,
-                                response = cacheResponse,
+                        if(cacheResponse != null) {
+                            callback(cacheResponse, null)
+                            ObserverManager.notifyRequestEvent(
+                                RequestEvent.RequestSuccess(
+                                    request = this,
+                                    response = cacheResponse,
+                                )
                             )
-                        )
+                        } else {
+                            val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
+                            CancelRequestManager.add(id, call)
+                            enqueueCommand(call, callback)
+                        }
                     }
 
                     is SlowNetworkPolicyAction.TIMEOUT -> {
@@ -497,15 +508,31 @@ class NetraRequest<T> @PublishedApi internal constructor(
 
                 is OfflinePolicyAction.USE_CACHE -> {
                     val cacheResponse = cacheManager.getCache(allowExpired = true)
-                    callback(cacheResponse)
+                    if(cacheResponse != null) {
+                        callback(cacheResponse, null)
+                        ObserverManager.notifyRequestEvent(
+                            RequestEvent.RequestSuccess(
+                                request = this,
+                                response = cacheResponse,
+                            )
+                        )
+                    } else {
+                        val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
+                        CancelRequestManager.add(id, call)
+                        enqueueCommand(call, callback)
+                    }
                 }
 
                 is OfflinePolicyAction.THROW_ERROR -> {
-                    callback(getNetraFailedResponse(ConnectException()))
+                    val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
+                    CancelRequestManager.add(id, call)
+                    enqueueCommand(call, callback)
                 }
 
                 else -> {
-                    callback(getNetraFailedResponse(ConnectException()))
+                    val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
+                    CancelRequestManager.add(id, call)
+                    enqueueCommand(call, callback)
                 }
             }
         }
@@ -532,26 +559,6 @@ class NetraRequest<T> @PublishedApi internal constructor(
         } else {
             @Suppress("UNCHECKED_CAST")
             return byteArray as T
-        }
-    }
-
-    companion object {
-
-        internal fun getNetraFailedResponse(e: Exception?): NetraResponse {
-            val (code, message) = when (e) {
-                is ConnectException -> 503 to "Service Unavailable: ${e.message}"
-                is java.net.SocketTimeoutException -> 408 to "Request Timeout: ${e.message}"
-                is java.net.UnknownHostException -> 502 to "Bad Gateway / DNS failure: ${e.message}"
-                is javax.net.ssl.SSLException -> 495 to "SSL Error: ${e.message}"
-                is java.net.SocketException -> 503 to "Socket Error: ${e.message}"
-                else -> 400 to "IO Error: ${e?.message}"
-            }
-            return NetraResponse(
-                data = null,
-                statusCode = code,
-                statusMessage = message,
-                isCache = false,
-            )
         }
     }
 }

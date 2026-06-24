@@ -33,6 +33,7 @@ import com.netra.library.observers.RequestEvent
 import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
 import com.netra.library.converter.NetraKotlinxConverter
+import com.netra.library.exceptions.NetraException
 import com.netra.library.observers.QueueEvent
 
 data class Repo(
@@ -75,8 +76,9 @@ class MainActivity : ComponentActivity() {
                     .withCache(Cache())
                     .whenOffline(OfflinePolicyAction.THROW_ERROR)
                     .whenSlowNetwork(SlowNetworkPolicyAction.USE_CACHE)
-                    .enqueue { result ->
+                    .enqueue { result, exception ->
                         Log.e("result", result?.statusCode.toString() )
+                        Log.e("exception", exception?.message.toString())
                     }
             }
         }
@@ -219,13 +221,26 @@ class MainActivity : ComponentActivity() {
                 }
             })
 
-            request.enqueue { result ->
-                Log.e(
-                    "result is success",
-                    "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
-                )
-//
+
+        try {
+            val result = request.execute()
+            Log.e("", " execute: ${result.statusCode}")
+        } catch (e: NetraException) {
+            Log.e("", "error execute: ${e.message}")
         }
+
+//        try {
+//            request.enqueue { result, exception ->
+//                Log.e(
+//                    "result is success",
+//                    "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
+//                )
+//                Log.e("", "exeption: ${exception?.message}")
+//            }
+//        } catch (e: NetraException) {
+//            Log.e("", "error execute: ${e.message}")
+//        }
+
         Handler(Looper.getMainLooper()).postDelayed({
          //   Log.e("", "cancelled")
            // request.cancel()
@@ -280,9 +295,13 @@ class MainActivity : ComponentActivity() {
         client.put("/users/1", body)
             .asObject<Any>()
             .withCache(Cache())
-            .enqueue { result ->
-                Log.e("result", result?.statusCode.toString() )
-            }
+            .enqueue { result, exception ->
+            Log.e(
+                "result is success",
+                "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
+            )
+            Log.e("", "exeption: ${exception?.message}")
+        }
     }
 
     fun handlePatch() {
@@ -302,8 +321,12 @@ class MainActivity : ComponentActivity() {
         client.patch("/users/1", body)
             .asObject<Any>()
             .withCache(Cache())
-            .enqueue { result ->
-                Log.e("result", result?.statusCode.toString() )
+            .enqueue { result, exception ->
+                Log.e(
+                    "result is success",
+                    "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
+                )
+                Log.e("", "exeption: ${exception?.message}")
             }
     }
 
@@ -318,8 +341,12 @@ class MainActivity : ComponentActivity() {
         client.delete("/users/1")
             .asObject<Any>()
             .withCache(Cache())
-            .enqueue { result ->
-                Log.e("result", result?.statusCode.toString() )
+            .enqueue { result, exception ->
+                Log.e(
+                    "result is success",
+                    "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
+                )
+                Log.e("", "exeption: ${exception?.message}")
             }
     }
 

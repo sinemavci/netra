@@ -78,7 +78,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
         }
     }
 
-    fun getCache(allowExpired: Boolean): NetraResponse {
+    fun getCache(allowExpired: Boolean): NetraResponse? {
         val cacheKey = getCacheKey()
         val ttl = cache?.ttl ?: Cache.TTL_DEFAULT
         val now = System.currentTimeMillis()
@@ -101,7 +101,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
         val cacheFile = File(context.cacheDir, cacheKey)
         if (!cacheFile.exists()) {
             ObserverManager.notifyCacheEvent(CacheEvent.CacheMiss(request))
-            return NetraRequest.getNetraFailedResponse(Exception("Cache not found!"))
+            return null
         }
 
         val ageMs = getCacheAgeByMs(cacheFile)
@@ -137,7 +137,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
                 isCache = true,
             )
         } else {
-            return NetraRequest.getNetraFailedResponse(Exception("Cache not found!"))
+            return null
         }
     }
 }
