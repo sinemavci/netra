@@ -2,6 +2,7 @@ package com.netra.library.observers
 
 import com.netra.library.NetraRequest
 import com.netra.library.NetraResponse
+import com.netra.library.exceptions.NetraException
 
 sealed interface RequestEvent {
     // Request executed.
@@ -18,7 +19,8 @@ sealed interface RequestEvent {
     // Request failed.
     data class RequestFailed(
         val request: NetraRequest<*>,
-        val response: NetraResponse,
+        val response: NetraResponse?,
+        val exception: NetraException?,
     ) : RequestEvent
 
 }
