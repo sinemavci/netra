@@ -17,6 +17,9 @@ import com.netra.library.managers.OfflineQueueManager
 import com.netra.library.observers.INetraObserver
 import com.netra.library.observers.RequestEvent
 import com.netra.library.utils.ResponseUtil
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Headers
@@ -28,9 +31,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
 import java.lang.reflect.Type
-import java.net.ConnectException
 import java.util.UUID
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -246,26 +247,22 @@ class NetraRequest<T> @PublishedApi internal constructor(
         return requestBuilder.build()
     }
 
-    private fun executeCommand(netraCall: NetraCall): NetraResponse {
-        var error: Exception? = null
-        val latch = CountDownLatch(1)
-        lateinit var _response: NetraResponse
-
-        executor!!.execute({
+    private suspend fun executeCommand(netraCall: NetraCall): NetraResponse {
+        val request = this
+        return withContext(Dispatchers.IO) {
             try {
                 val response = netraCall.call.execute()
-                _response = ResponseUtil.okHttpResponseToNetra(response, this)
-                cacheManager.writeCacheResponse(_response)
-            } catch (e: IOException) {
-                error = ResponseUtil.mapException(e)
-            } finally {
-                latch.countDown()
-            }
-        })
-        latch.await()
 
-        error?.let { throw it }
-        return _response
+                val netraResponse =
+                    ResponseUtil.okHttpResponseToNetra(response, request)
+
+                cacheManager.writeCacheResponse(netraResponse)
+
+                netraResponse
+            } catch (e: Exception) {
+                throw ResponseUtil.mapException(e)
+            }
+        }
     }
 
     private fun handleTimeoutPolicy(): OkHttpClient {
@@ -279,28 +276,17 @@ class NetraRequest<T> @PublishedApi internal constructor(
         return shortClient
     }
 
-    private fun handleWaitPolicy(request: Request): NetraResponse {
-        var error: Exception? = null
-        val latch = CountDownLatch(1)
-        lateinit var _netraResponse: NetraResponse
-        Handler(Looper.getMainLooper()).postDelayed({
-            val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
-            CancelRequestManager.add(id, call)
-            executor!!.execute({
-                try {
-                    val response = config.client.newCall(request).execute()
-                    _netraResponse = ResponseUtil.okHttpResponseToNetra(response, this)
-                } catch (e: IOException) {
-                    error = ResponseUtil.mapException(e)
-                } finally {
-                    latch.countDown()
-                }
-            })
-        }, (slowNetworkPolicyAction as SlowNetworkPolicyAction.WAIT).delay)
-        latch.await()
+    private suspend fun handleWaitPolicy(
+        request: Request
+    ): NetraResponse {
+        delay((slowNetworkPolicyAction as SlowNetworkPolicyAction.WAIT).delay)
+        val call = NetraCall(
+            config.client.newCall(request),
+            isCancelWhenDestroyed
+        )
 
-        error?.let { throw it }
-        return _netraResponse
+        CancelRequestManager.add(id, call)
+        return executeCommand(call)
     }
 
     fun executeStream(
@@ -339,7 +325,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
         }
     }
 
-    fun execute(): NetraResponse {
+    suspend fun execute(): NetraResponse {
         lateinit var netraResponse: NetraResponse
         val networkSeverity = connectivityManager.getNetworkSpeedState()
         val request = getRequest(null)
