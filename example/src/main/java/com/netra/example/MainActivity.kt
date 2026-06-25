@@ -35,6 +35,9 @@ import com.netra.library.enums.SlowNetworkPolicyAction
 import com.netra.library.converter.NetraKotlinxConverter
 import com.netra.library.exceptions.NetraException
 import com.netra.library.observers.QueueEvent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 data class Repo(
     val id: Int,
@@ -139,7 +142,7 @@ class MainActivity : ComponentActivity() {
 //            )
 //            .build()
 
-        val request = client!!.get("/?status=200&delay=6000")
+        val request = client!!.get("/?status=200&delay=5000")
             .slowMode()
             .addHeaders(mapOf("headercustom2" to "custom"))
             .asObject<Any>()
@@ -221,25 +224,26 @@ class MainActivity : ComponentActivity() {
                 }
             })
 
-
-        try {
-            val result = request.execute()
-            Log.e("", " execute: ${result.statusCode}")
-        } catch (e: NetraException) {
-            Log.e("", "error execute: ${e.message}")
-        }
-
 //        try {
-//            request.enqueue { result, exception ->
-//                Log.e(
-//                    "result is success",
-//                    "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
-//                )
-//                Log.e("", "exeption: ${exception?.message}")
+//            CoroutineScope(Dispatchers.IO).launch {
+//                val result = request.execute()
+//                Log.e("", " execute: ${result.statusCode} ${result.data}")
 //            }
 //        } catch (e: NetraException) {
 //            Log.e("", "error execute: ${e.message}")
 //        }
+//
+        try {
+            request.enqueue { result, exception ->
+                Log.e(
+                    "result is success",
+                    "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
+                )
+                Log.e("", "exeption: ${exception?.message}")
+            }
+        } catch (e: NetraException) {
+            Log.e("", "error execute: ${e.message}")
+        }
 
         Handler(Looper.getMainLooper()).postDelayed({
          //   Log.e("", "cancelled")
@@ -266,11 +270,18 @@ class MainActivity : ComponentActivity() {
         val call = client.post("/users", body)
             .asObject<Any>()
             .withCache(Cache())
-        val response = call.execute()
-        Log.e(
-            "response in main kt",
-            "${response.statusCode} ${response.data} message: ${response.statusMessage} "
-        )
+        try {
+            CoroutineScope(Dispatchers.IO).launch {
+                val response = call.execute()
+                Log.e(
+                    "response in main kt",
+                    "${response.statusCode} ${response.data} message: ${response.statusMessage} "
+                )
+            }
+        } catch (e: NetraException) {
+            Log.e("", "error execute: ${e.message}")
+        }
+
 //            .enqueue { result ->
 //                Log.e("result", "${result?.statusCode} ${result?.data} message: ${result?.statusMessage} " )
 //            }

@@ -1,8 +1,10 @@
 package com.netra.library
 
+import android.Manifest
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import androidx.annotation.RequiresPermission
 import com.google.gson.Gson
 import com.netra.library.enums.Command
 import com.netra.library.enums.NetworkSeverity
@@ -30,6 +32,7 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
+import java.io.InputStream
 import java.lang.reflect.Type
 import java.util.UUID
 import java.util.concurrent.ExecutorService
@@ -265,7 +268,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
         }
     }
 
-    private fun handleTimeoutPolicy(): OkHttpClient {
+    private fun timeoutOkHttpBuilder(): OkHttpClient {
         val shortClient = config.client.newBuilder()
             .callTimeout(
                 timeout = (slowNetworkPolicyAction as SlowNetworkPolicyAction.TIMEOUT).timeout,
@@ -289,8 +292,9 @@ class NetraRequest<T> @PublishedApi internal constructor(
         return executeCommand(call)
     }
 
+    @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
     fun executeStream(
-        onStreamReady: (java.io.InputStream) -> Unit,
+        onStreamReady: (InputStream) -> Unit,
         onFailure: (Exception) -> Unit
     ) {
         val networkSeverity = connectivityManager.getNetworkSpeedState()
@@ -325,6 +329,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
         }
     }
 
+    @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
     suspend fun execute(): NetraResponse {
         lateinit var netraResponse: NetraResponse
         val networkSeverity = connectivityManager.getNetworkSpeedState()
@@ -342,7 +347,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                     }
 
                     is SlowNetworkPolicyAction.TIMEOUT -> {
-                        val shortClient = handleTimeoutPolicy()
+                        val shortClient = timeoutOkHttpBuilder()
                         val shortCall =
                             NetraCall(shortClient.newCall(request), isCancelWhenDestroyed)
                         netraResponse = executeCommand(shortCall)
@@ -399,6 +404,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
     }
 
     private fun enqueueCommand(netraCall: NetraCall, callback: (NetraResponse?, NetraException?) -> Unit) {
+        CancelRequestManager.add(id, netraCall)
         netraCall.call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 handleOnFailure(call, e, callback)
@@ -410,22 +416,22 @@ class NetraRequest<T> @PublishedApi internal constructor(
         })
     }
 
+    @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
     fun enqueue(callback: (NetraResponse?, NetraException?) -> Unit) {
         val reporter = StatusReporter(callback)
         val request = getRequest(reporter)
         val networkSeverity = connectivityManager.getNetworkSpeedState()
         val isConnected = connectivityManager.isConnected()
+        val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
 
         if (isConnected) {
             if (networkSeverity == NetworkSeverity.NORMAL) {
-                val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
-                CancelRequestManager.add(id, call)
                 enqueueCommand(call, callback)
             } else {
                 when (slowNetworkPolicyAction) {
                     is SlowNetworkPolicyAction.USE_CACHE -> {
                         val cacheResponse = cacheManager.getCache(allowExpired = true)
-                        if(cacheResponse != null) {
+                        if (cacheResponse != null) {
                             callback(cacheResponse, null)
                             ObserverManager.notifyRequestEvent(
                                 RequestEvent.RequestSuccess(
@@ -434,33 +440,24 @@ class NetraRequest<T> @PublishedApi internal constructor(
                                 )
                             )
                         } else {
-                            val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
-                            CancelRequestManager.add(id, call)
                             enqueueCommand(call, callback)
                         }
                     }
 
                     is SlowNetworkPolicyAction.TIMEOUT -> {
-                        val shortClient = handleTimeoutPolicy()
+                        val shortClient = timeoutOkHttpBuilder()
                         val shortCall =
                             NetraCall(shortClient.newCall(request), isCancelWhenDestroyed)
                         enqueueCommand(shortCall, callback)
-                        return
                     }
 
                     is SlowNetworkPolicyAction.WAIT -> {
                         Handler(Looper.getMainLooper()).postDelayed({
-                            val call =
-                                NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
-                            CancelRequestManager.add(id, call)
                             enqueueCommand(call, callback)
                         }, (slowNetworkPolicyAction as SlowNetworkPolicyAction.WAIT).delay)
-                        return
                     }
 
                     else -> {
-                        val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
-                        CancelRequestManager.add(id, call)
                         enqueueCommand(call, callback)
                     }
                 }
@@ -468,7 +465,6 @@ class NetraRequest<T> @PublishedApi internal constructor(
         } else {
             when (offlinePolicyAction) {
                 is OfflinePolicyAction.QUEUE -> {
-                    Log.e("", "sdk uses OfflinePolicyAction.QUEUE")
                     OfflineQueueManager.push(request)
                 }
 
@@ -494,7 +490,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
 
                 is OfflinePolicyAction.USE_CACHE -> {
                     val cacheResponse = cacheManager.getCache(allowExpired = true)
-                    if(cacheResponse != null) {
+                    if (cacheResponse != null) {
                         callback(cacheResponse, null)
                         ObserverManager.notifyRequestEvent(
                             RequestEvent.RequestSuccess(
@@ -503,21 +499,15 @@ class NetraRequest<T> @PublishedApi internal constructor(
                             )
                         )
                     } else {
-                        val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
-                        CancelRequestManager.add(id, call)
                         enqueueCommand(call, callback)
                     }
                 }
 
                 is OfflinePolicyAction.THROW_ERROR -> {
-                    val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
-                    CancelRequestManager.add(id, call)
                     enqueueCommand(call, callback)
                 }
 
                 else -> {
-                    val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
-                    CancelRequestManager.add(id, call)
                     enqueueCommand(call, callback)
                 }
             }
