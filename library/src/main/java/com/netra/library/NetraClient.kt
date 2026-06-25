@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.collection.LruCache
 import com.netra.library.converter.IConverter
+import com.netra.library.converter.NetraGsonConverter
 import com.netra.library.enums.Command
 import com.netra.library.exceptions.NetraException
 import com.netra.library.interceptors.BaseInterceptor
@@ -43,7 +44,7 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
     data class Builder(
         val context: Context,
         var baseUrl: String? = null,
-        var converter: IConverter? = null,
+        var converter: IConverter? = NetraGsonConverter(),
         var headers: MutableMap<String, String> = mutableMapOf(),
     ) {
         fun baseUrl(url: String): Builder {
