@@ -120,7 +120,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
         try {
             val _response = ResponseUtil.okHttpResponseToNetra(response, this)
             callback(_response, null)
-            if(response.isSuccessful) {
+            if (response.isSuccessful) {
                 cacheManager.writeCacheResponse(_response)
                 ObserverManager.notifyRequestEvent(
                     RequestEvent.RequestSuccess(
@@ -133,18 +133,19 @@ class NetraRequest<T> @PublishedApi internal constructor(
                     RequestEvent.RequestFailed(
                         request = this,
                         response = _response,
+                        exception = null,
                     )
                 )
             }
         } catch (e: Exception) {
             callback(null, ResponseUtil.mapException(e))
-            //todo: Modify RequestFailed so that it take as nullable response.
-//                ObserverManager.notifyRequestEvent(
-//                    RequestEvent.RequestFailed(
-//                        request = this,
-//                        response = _response,
-//                    )
-//                )
+            ObserverManager.notifyRequestEvent(
+                RequestEvent.RequestFailed(
+                    request = this,
+                    response = null,
+                    exception = ResponseUtil.mapException(e),
+                )
+            )
         } finally {
             response.close()
         }
@@ -190,11 +191,10 @@ class NetraRequest<T> @PublishedApi internal constructor(
         }
     }
 
-    private fun getRequest(reporter: StatusReporter?): Request {
+    private fun getRequest(): Request {
         val requestBuilder: Request.Builder = when (command) {
             is Command.Get -> {
-                val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
-                    .url(command.url).get()
+                val requestBuilder = Request.Builder().url(command.url).get()
 
                 header?.forEach { (key, value) ->
                     requestBuilder.addHeader(key, value)
@@ -203,8 +203,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
             }
 
             is Command.Post -> {
-                val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
-                    .url(command.url)
+                val requestBuilder = Request.Builder().url(command.url)
                     .post(getRequestBody(command.body))
 
                 header?.forEach { (key, value) ->
@@ -214,8 +213,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
             }
 
             is Command.Put -> {
-                val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
-                    .url(command.url)
+                val requestBuilder = Request.Builder().url(command.url)
                     .put(getRequestBody(command.body))
 
                 header?.forEach { (key, value) ->
@@ -225,8 +223,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
             }
 
             is Command.Patch -> {
-                val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
-                    .url(command.url)
+                val requestBuilder = Request.Builder().url(command.url)
                     .patch(getRequestBody(command.body))
 
                 header?.forEach { (key, value) ->
@@ -236,9 +233,8 @@ class NetraRequest<T> @PublishedApi internal constructor(
             }
 
             is Command.Delete -> {
-                val requestBuilder = Request.Builder().tag(StatusReporter::class.java, reporter)
-                    .url(command.url)
-                    .delete(getRequestBody(command.body ?: NetraRequestBody.EMPTY))
+                val requestBuilder = Request.Builder().url(command.url)
+                    .delete(getRequestBody(command.body))
 
                 header?.forEach { (key, value) ->
                     requestBuilder.addHeader(key, value)
@@ -298,7 +294,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
         onFailure: (Exception) -> Unit
     ) {
         val networkSeverity = connectivityManager.getNetworkSpeedState()
-        val request = getRequest(null)
+        val request = getRequest()
         val netraCall = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
         CancelRequestManager.add(id, netraCall)
 
@@ -333,7 +329,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
     suspend fun execute(): NetraResponse {
         lateinit var netraResponse: NetraResponse
         val networkSeverity = connectivityManager.getNetworkSpeedState()
-        val request = getRequest(null)
+        val request = getRequest()
         val netraCall = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
 
         if (connectivityManager.isConnected()) {
@@ -418,8 +414,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
 
     @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
     fun enqueue(callback: (NetraResponse?, NetraException?) -> Unit) {
-        val reporter = StatusReporter(callback)
-        val request = getRequest(reporter)
+        val request = getRequest()
         val networkSeverity = connectivityManager.getNetworkSpeedState()
         val isConnected = connectivityManager.isConnected()
         val call = NetraCall(config.client.newCall(request), isCancelWhenDestroyed)
@@ -469,7 +464,6 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 }
 
                 is OfflinePolicyAction.RETRY -> {
-                    Log.e("", "sdk uses OfflinePolicyAction.RETRY: ${retriesCount}")
                     retriesCount?.let {
                         val retryClient = OkHttpClient.Builder()
                             .addInterceptor(RetryInterceptor(maxRetries = retriesCount!!))
@@ -477,6 +471,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                         val call = retryClient.newCall(request)
                         call.enqueue(object : Callback {
                             override fun onFailure(call: Call, e: IOException) {
+                                Log.e("", "onFailure retry")
                                 handleOnFailure(call, e, callback)
                             }
 

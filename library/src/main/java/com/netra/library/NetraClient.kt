@@ -6,7 +6,6 @@ import androidx.collection.LruCache
 import com.netra.library.converter.IConverter
 import com.netra.library.converter.NetraGsonConverter
 import com.netra.library.enums.Command
-import com.netra.library.exceptions.NetraException
 import com.netra.library.interceptors.BaseInterceptor
 import com.netra.library.interceptors.CircuitBreakerInterceptor
 import com.netra.library.interceptors.NetraInterceptor
@@ -173,6 +172,3 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
         }
     }
 }
-
-class StatusReporter(val onStatusUpdate: (NetraResponse?, NetraException?) -> Unit)
-
