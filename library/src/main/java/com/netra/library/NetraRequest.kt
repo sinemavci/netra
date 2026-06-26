@@ -11,7 +11,6 @@ import com.netra.library.enums.NetworkSeverity
 import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
 import com.netra.library.exceptions.NetraException
-import com.netra.library.interceptors.RetryInterceptor
 import com.netra.library.managers.CacheManager
 import com.netra.library.managers.ObserverManager
 import com.netra.library.managers.CancelRequestManager
@@ -107,13 +106,16 @@ class NetraRequest<T> @PublishedApi internal constructor(
     private fun handleOnFailure(call: Call, e: IOException, callback: (NetraResponse?, NetraException?) -> Unit) {
         CancelRequestManager.remove(id)
         if (!call.isCanceled()) {
-            val cacheResponse = cacheManager.getCache(allowExpired = false)
-            callback(cacheResponse, if (cacheResponse == null) ResponseUtil.mapException(e) else null)
+            callback(null, ResponseUtil.mapException(e))
+            ObserverManager.notifyRequestEvent(
+                RequestEvent.RequestFailed(
+                    request = this,
+                    response = null,
+                    exception = ResponseUtil.mapException(e),
+                )
+            )
         }
     }
-
-    private fun Headers.toMap(): Map<String, String> =
-        names().associateWith { name -> get(name)!! }
 
     private fun handleOnResponse(response: Response, callback: (NetraResponse?, NetraException?) -> Unit) {
         CancelRequestManager.remove(id)
@@ -251,11 +253,26 @@ class NetraRequest<T> @PublishedApi internal constructor(
         return withContext(Dispatchers.IO) {
             try {
                 val response = netraCall.call.execute()
-
                 val netraResponse =
                     ResponseUtil.okHttpResponseToNetra(response, request)
 
-                cacheManager.writeCacheResponse(netraResponse)
+                if(response.isSuccessful) {
+                    cacheManager.writeCacheResponse(netraResponse)
+                    ObserverManager.notifyRequestEvent(
+                        RequestEvent.RequestSuccess(
+                            request = request,
+                            response = netraResponse,
+                        )
+                    )
+                } else {
+                    ObserverManager.notifyRequestEvent(
+                        RequestEvent.RequestFailed(
+                            request = request,
+                            response = netraResponse,
+                            exception = null,
+                        )
+                    )
+                }
 
                 netraResponse
             } catch (e: Exception) {
@@ -369,18 +386,52 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 }
 
                 is OfflinePolicyAction.RETRY -> {
-                    Log.e("", "sdk uses OfflinePolicyAction.RETRY: ${retriesCount}")
-                    retriesCount?.let {
-                        val retryClient = OkHttpClient.Builder()
-                            .addInterceptor(RetryInterceptor(maxRetries = retriesCount!!))
-                            .build()
-                        val netraCall = NetraCall(
-                            retryClient.newCall(netraCall.call.request()),
-                            isCancelWhenDestroyed
-                        )
-                        netraResponse = executeCommand(netraCall)
+                    var attempt = 0
+                    val request = this
+                    val maxRetries = retriesCount ?: 1
+                    val interval = (offlinePolicyAction as OfflinePolicyAction.RETRY).retryInterval ?: 2000L
+
+                    while (true) {
+                        try {
+                            val activeCall =
+                                if (attempt == 0) netraCall.call else netraCall.call.clone()
+                            val response = withContext(Dispatchers.IO) {
+                                activeCall.execute()
+                            }
+                            val netraResponse =
+                                ResponseUtil.okHttpResponseToNetra(response, request)
+                            if (response.isSuccessful) {
+                                cacheManager.writeCacheResponse(netraResponse)
+                                ObserverManager.notifyRequestEvent(
+                                    RequestEvent.RequestSuccess(
+                                        request = this,
+                                        response = netraResponse,
+                                    )
+                                )
+                            } else {
+                                ObserverManager.notifyRequestEvent(
+                                    RequestEvent.RequestFailed(
+                                        request = this,
+                                        response = netraResponse,
+                                        exception = null,
+                                    )
+                                )
+                            }
+                            return netraResponse
+                        } catch (e: Exception) {
+                            if (e is IllegalStateException && e.message?.contains("Already Executed") == true) {
+                                throw e
+                            }
+
+                            attempt++
+                            if (attempt >= maxRetries) {
+                                throw ResponseUtil.mapException(e)
+                            }
+
+                            delay(interval * attempt)
+                        }
+                        retriesCount = null
                     }
-                    retriesCount = null
                 }
 
                 is OfflinePolicyAction.USE_CACHE -> {
@@ -388,11 +439,11 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 }
 
                 is OfflinePolicyAction.THROW_ERROR -> {
-                    netraResponse = cacheManager.getCache(allowExpired = true) ?: executeCommand(netraCall)
+                    netraResponse = executeCommand(netraCall)
                 }
 
                 else -> {
-                    netraResponse = cacheManager.getCache(allowExpired = true) ?: executeCommand(netraCall)
+                    netraResponse = executeCommand(netraCall)
                 }
             }
         }
@@ -464,18 +515,14 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 }
 
                 is OfflinePolicyAction.RETRY -> {
+                    val interval = (offlinePolicyAction as OfflinePolicyAction.RETRY).retryInterval ?: 2000L
                     retriesCount?.let {
-                        val retryClient = OkHttpClient.Builder()
-                            .addInterceptor(RetryInterceptor(maxRetries = retriesCount!!))
-                            .build()
-                        val call = retryClient.newCall(request)
-                        call.enqueue(object : Callback {
-                            override fun onFailure(call: Call, e: IOException) {
-                                Log.e("", "onFailure retry")
+                        call.call.enqueue(object : RetryingCallback(config.client, maxRetries = it, interval) {
+                            override fun onRetryFailure(call: Call, e: okio.IOException) {
                                 handleOnFailure(call, e, callback)
                             }
 
-                            override fun onResponse(call: Call, response: Response) {
+                            override fun onRetryResponse(call: Call, response: Response) {
                                 handleOnResponse(response, callback)
                             }
                         })

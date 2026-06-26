@@ -142,13 +142,13 @@ class MainActivity : ComponentActivity() {
 //            )
 //            .build()
 
-        val request = client!!.get("/?status=200&delay=5000")
+        val request = client!!.get("/?status=500&delay=0000")
             .slowMode()
             .addHeaders(mapOf("headercustom2" to "custom"))
             .asObject<Any>()
-            .withCache(Cache())
+//            .withCache(Cache())
             .cancelWhenDestroyed()
-            .whenOffline(OfflinePolicyAction.USE_CACHE)
+            .whenOffline(OfflinePolicyAction.RETRY(4, 4000))
             .addObserver(object : INetraObserver {
                 override fun onNetworkChanged(event: NetworkEvent) {
                     Log.e(
@@ -213,7 +213,7 @@ class MainActivity : ComponentActivity() {
                         is RequestEvent.RequestFailed -> {
                             Log.e(
                                 "",
-                                "RequestFailed: ${event.request.command.url} response: ${event.response.statusCode} ${event.response.data}"
+                                "RequestFailed: ${event.request.command.url} response: ${event.response?.statusCode} ${event.response?.data}"
                             )
                         }
                     }
