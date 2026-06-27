@@ -2,6 +2,7 @@ package com.netra.library.utils
 
 import com.netra.library.NetraRequest
 import com.netra.library.NetraResponse
+import com.netra.library.converter.NetraGsonConverter
 import com.netra.library.exceptions.NetraConnectionException
 import com.netra.library.exceptions.NetraDnsException
 import com.netra.library.exceptions.NetraException
@@ -20,14 +21,18 @@ import javax.net.ssl.SSLException
 import javax.net.ssl.SSLKeyException
 
 internal object ResponseUtil {
-    fun okHttpResponseToNetra(response: okhttp3.Response, request: NetraRequest<*>): NetraResponse {
+    fun okHttpResponseToNetra(response: okhttp3.Response, request: NetraRequest<*>?): NetraResponse {
+        val byteArray = response.body?.bytes()
         val convertedResponse = try {
-            val byteArray = response.body?.bytes()
-            if (byteArray != null) {
-                request.handleConvertedResponse(byteArray)
-            } else {
-                null
-            }
+                if (byteArray != null) {
+                    if (request != null) {
+                        request.handleConvertedResponse(byteArray)
+                    } else {
+                        NetraGsonConverter().convert<Any>(byteArray, Any::class.java)
+                    }
+                } else {
+                    null
+                }
         } catch (e: java.io.IOException) {
             null
         }

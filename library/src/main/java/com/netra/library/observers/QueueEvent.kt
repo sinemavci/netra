@@ -1,6 +1,7 @@
 package com.netra.library.observers
 
 import com.netra.library.NetraResponse
+import com.netra.library.exceptions.NetraException
 
 sealed interface QueueEvent {
     // Request could not execute now, so SDK persisted it for later replay.
@@ -11,12 +12,12 @@ sealed interface QueueEvent {
     ) : QueueEvent
 
     // No cache entry exists.
-    data class QueuedRequestRestored(
+    data class QueuedRequestExecuted(
         val url: String,
     ) : QueueEvent
 
     // Fresh network response successfully written to cache.
-    data class QueuedRequestExecuted(
+    data class QueuedRequestSuccess(
         val url: String,
         val response: NetraResponse,
     ) : QueueEvent
@@ -24,5 +25,7 @@ sealed interface QueueEvent {
     // Queued network response failed.
     data class QueuedRequestFailed(
         val url: String,
+        val response: NetraResponse?,
+        val exception: NetraException?,
     ) : QueueEvent
 }

@@ -38,7 +38,6 @@ import com.netra.library.observers.QueueEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.util.concurrent.TimeUnit
 
 data class Repo(
     val id: Int,
@@ -143,14 +142,14 @@ class MainActivity : ComponentActivity() {
 //            )
 //            .build()
 
-        val request = client!!.get("/?status=200&delay=5000")
+        val request = client!!.get("/?status=500&delay=5000")
             .slowMode()
             .addHeaders(mapOf("headercustom2" to "custom"))
             .asObject<Any>()
 //            .withCache(Cache())
             .cancelWhenDestroyed()
-            .whenSlowNetwork(SlowNetworkPolicyAction.TIMEOUT(1000, TimeUnit.MILLISECONDS))
-            .whenOffline(OfflinePolicyAction.RETRY(4, 4000))
+//            .whenSlowNetwork(SlowNetworkPolicyAction.TIMEOUT(1000, TimeUnit.MILLISECONDS))
+            .whenOffline(OfflinePolicyAction.QUEUE)
             .addObserver(object : INetraObserver {
                 override fun onNetworkChanged(event: NetworkEvent) {
                     Log.e(
@@ -222,7 +221,35 @@ class MainActivity : ComponentActivity() {
                 }
 
                 override fun onQueueChanged(event: QueueEvent) {
-                    TODO("Not yet implemented")
+                    when(event) {
+                        is QueueEvent.RequestQueued -> {
+                            Log.e(
+                                "",
+                                "RequestQueued: ${event.url} queueOrder: ${event.queueOrder} createdAt: ${event.createdAt}"
+                            )
+                        }
+
+                        is QueueEvent.QueuedRequestSuccess -> {
+                            Log.e(
+                                "",
+                                "QueuedRequestSuccess: ${event.url} statusCode: ${event.response.statusCode} data: ${event.response.data}"
+                            )
+                        }
+
+                        is QueueEvent.QueuedRequestExecuted -> {
+                            Log.e(
+                                "",
+                                "QueuedRequestExecuted: ${event.url}}"
+                            )
+                        }
+
+                        is QueueEvent.QueuedRequestFailed -> {
+                            Log.e(
+                                "",
+                                "QueuedRequestFailed: ${event.url}}"
+                            )
+                        }
+                    }
                 }
             })
 
