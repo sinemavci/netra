@@ -105,16 +105,14 @@ class NetraRequest<T> @PublishedApi internal constructor(
 
     private fun handleOnFailure(call: Call, e: IOException, callback: (NetraResponse?, NetraException?) -> Unit) {
         CancelRequestManager.remove(id)
-        if (!call.isCanceled()) {
-            callback(null, ResponseUtil.mapException(e))
-            ObserverManager.notifyRequestEvent(
-                RequestEvent.RequestFailed(
-                    request = this,
-                    response = null,
-                    exception = ResponseUtil.mapException(e),
-                )
+        callback(null, ResponseUtil.mapException(e))
+        ObserverManager.notifyRequestEvent(
+            RequestEvent.RequestFailed(
+                request = this,
+                response = null,
+                exception = ResponseUtil.mapException(e),
             )
-        }
+        )
     }
 
     private fun handleOnResponse(response: Response, callback: (NetraResponse?, NetraException?) -> Unit) {
@@ -285,7 +283,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
         val shortClient = config.client.newBuilder()
             .callTimeout(
                 timeout = (slowNetworkPolicyAction as SlowNetworkPolicyAction.TIMEOUT).timeout,
-                TimeUnit.SECONDS
+                unit = (slowNetworkPolicyAction as SlowNetworkPolicyAction.TIMEOUT).timeUnit,
             )
             .build()
 

@@ -38,6 +38,7 @@ import com.netra.library.observers.QueueEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 
 data class Repo(
     val id: Int,
@@ -134,7 +135,7 @@ class MainActivity : ComponentActivity() {
     }
     fun handleGet() {
 //        val client = NetraClient.Builder(applicationContext)
-//            .baseUrl("http://10.0.2.2:3001")
+//            .baseUrl("http://10.0.2.2:3001")                                                                                                                                                                                                                                 
 //            .circuitBreaker()
 //            .addHeaders(mapOf("headercustom1" to "custom"))
 //            .addConverterFactory(
@@ -142,12 +143,13 @@ class MainActivity : ComponentActivity() {
 //            )
 //            .build()
 
-        val request = client!!.get("/?status=500&delay=0000")
+        val request = client!!.get("/?status=200&delay=5000")
             .slowMode()
             .addHeaders(mapOf("headercustom2" to "custom"))
             .asObject<Any>()
 //            .withCache(Cache())
             .cancelWhenDestroyed()
+            .whenSlowNetwork(SlowNetworkPolicyAction.TIMEOUT(1000, TimeUnit.MILLISECONDS))
             .whenOffline(OfflinePolicyAction.RETRY(4, 4000))
             .addObserver(object : INetraObserver {
                 override fun onNetworkChanged(event: NetworkEvent) {
@@ -239,7 +241,7 @@ class MainActivity : ComponentActivity() {
                     "result is success",
                     "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
                 )
-                Log.e("", "exeption: ${exception?.message}")
+                Log.e("", "exeption: ${exception?.message} --- ${exception?.cause}")
             }
         } catch (e: NetraException) {
             Log.e("", "error execute: ${e.message}")

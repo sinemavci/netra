@@ -15,6 +15,7 @@ import java.net.ConnectException
 import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.util.concurrent.TimeoutException
 import javax.net.ssl.SSLException
 import javax.net.ssl.SSLKeyException
 
@@ -80,6 +81,9 @@ internal object ResponseUtil {
 
             is SSLException ->
                 NetraSslException(e)
+
+            is TimeoutException ->
+                NetraTimeoutException(e)
 
             else ->
                 NetraNetworkException(e.message, e)
