@@ -36,6 +36,7 @@ import java.lang.reflect.Type
 import java.util.UUID
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.String
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -282,8 +283,8 @@ class NetraRequest<T> @PublishedApi internal constructor(
     private fun timeoutOkHttpBuilder(): OkHttpClient {
         val shortClient = config.client.newBuilder()
             .callTimeout(
-                timeout = (slowNetworkPolicyAction as SlowNetworkPolicyAction.TIMEOUT).timeout,
-                unit = (slowNetworkPolicyAction as SlowNetworkPolicyAction.TIMEOUT).timeUnit,
+                timeout = (slowNetworkPolicyAction as SlowNetworkPolicyAction.TIMEOUT).timeout.inWholeMilliseconds,
+                unit = TimeUnit.MILLISECONDS,
             )
             .build()
 

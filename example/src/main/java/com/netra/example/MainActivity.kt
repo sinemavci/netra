@@ -38,6 +38,8 @@ import com.netra.library.observers.QueueEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 data class Repo(
     val id: Int,
@@ -142,14 +144,14 @@ class MainActivity : ComponentActivity() {
 //            )
 //            .build()
 
-        val request = client!!.get("/?status=500&delay=5000")
+        val request = client!!.get("/?status=200&delay=3000")
             .slowMode()
             .addHeaders(mapOf("headercustom2" to "custom"))
             .asObject<Any>()
 //            .withCache(Cache())
             .cancelWhenDestroyed()
-//            .whenSlowNetwork(SlowNetworkPolicyAction.TIMEOUT(1000, TimeUnit.MILLISECONDS))
-            .whenOffline(OfflinePolicyAction.QUEUE)
+            .whenSlowNetwork(SlowNetworkPolicyAction.TIMEOUT(2000.milliseconds))
+            .whenOffline(OfflinePolicyAction.RETRY(4, 3.seconds))
             .addObserver(object : INetraObserver {
                 override fun onNetworkChanged(event: NetworkEvent) {
                     Log.e(
