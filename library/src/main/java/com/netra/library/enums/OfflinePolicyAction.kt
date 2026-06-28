@@ -10,11 +10,11 @@ sealed class OfflinePolicyAction(val identifier: String) {
     object THROW_ERROR : OfflinePolicyAction("THROW_ERROR")
 
     companion object {
-        fun fromIdentifier(identifier: String, retries: Int?): OfflinePolicyAction {
+        fun fromIdentifier(identifier: String, retries: Int?, retryInterval: Duration?): OfflinePolicyAction {
             return when (identifier) {
                 "QUEUE" -> QUEUE
                 "USE_CACHE" -> USE_CACHE
-                "RETRY" -> RETRY(retries ?: 1, retryInterval = 2000.milliseconds)
+                "RETRY" -> RETRY(retries ?: 1, retryInterval = retryInterval ?: 2000.milliseconds)
                 "THROW_ERROR" -> THROW_ERROR
                 else -> {
                     throw Throwable("Unknown offline policy: $identifier")
