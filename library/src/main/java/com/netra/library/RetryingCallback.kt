@@ -7,11 +7,12 @@ import okhttp3.Response
 import okio.IOException
 import java.util.Timer
 import java.util.TimerTask
+import kotlin.time.Duration
 
 abstract class RetryingCallback(
     private val client: OkHttpClient,
     private val maxRetries: Int,
-    private var internal: Long,
+    private var internal: Duration,
     private var attempt: Int = 0,
 ) : Callback {
 
@@ -21,7 +22,7 @@ abstract class RetryingCallback(
     override fun onFailure(call: Call, e: IOException) {
         if (attempt < maxRetries) {
             attempt++
-            val delayMs = internal * attempt
+            val delayMs = internal.inWholeMilliseconds
 
             Timer().schedule(object : TimerTask() {
                 override fun run() {

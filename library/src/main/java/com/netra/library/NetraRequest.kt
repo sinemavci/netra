@@ -36,8 +36,8 @@ import java.lang.reflect.Type
 import java.util.UUID
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 import kotlin.String
+import kotlin.time.Duration.Companion.milliseconds
 
 class NetraRequest<T> @PublishedApi internal constructor(
     @PublishedApi internal val config: NetraClientConfig,
@@ -387,7 +387,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                     var attempt = 0
                     val request = this
                     val maxRetries = retriesCount ?: 1
-                    val interval = (offlinePolicyAction as OfflinePolicyAction.RETRY).retryInterval ?: 2000L
+                    val interval = (offlinePolicyAction as OfflinePolicyAction.RETRY).retryInterval ?: 2000.milliseconds
 
                     while (true) {
                         try {
@@ -426,7 +426,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                                 throw ResponseUtil.mapException(e)
                             }
 
-                            delay(interval * attempt)
+                            delay(interval)
                         }
                         retriesCount = null
                     }
@@ -513,7 +513,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 }
 
                 is OfflinePolicyAction.RETRY -> {
-                    val interval = (offlinePolicyAction as OfflinePolicyAction.RETRY).retryInterval ?: 2000L
+                    val interval = (offlinePolicyAction as OfflinePolicyAction.RETRY).retryInterval ?: 2000.milliseconds
                     retriesCount?.let {
                         call.call.enqueue(object : RetryingCallback(config.client, maxRetries = it, interval) {
                             override fun onRetryFailure(call: Call, e: okio.IOException) {
