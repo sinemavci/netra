@@ -1,6 +1,6 @@
 package com.netra.library
 data class Cache(
-    val ttl: Long = TTL_SHORT,
+    val ttl: Long = TTL_DEFAULT,
 ) {
     companion object {
         const val TTL_SHORT = 60000L      // 1 Minute
