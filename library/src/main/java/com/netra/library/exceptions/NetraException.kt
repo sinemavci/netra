@@ -7,25 +7,25 @@ sealed class NetraException(
 
 class NetraTimeoutException(
     cause: Throwable? = null
-) : NetraException("Request timeout", cause)
+) : NetraException("Request timeout: ${cause?.message}", cause)
 
 class NetraDnsException(
     cause: Throwable? = null
-) : NetraException("DNS resolution failed", cause)
+) : NetraException("DNS resolution failed: ${cause?.message}", cause)
 
 class NetraConnectionException(
     cause: Throwable? = null
-) : NetraException("Connection failed", cause)
+) : NetraException("Connection failed: ${cause?.message}", cause)
 
 class NetraSslException(
     cause: Throwable? = null
-) : NetraException("SSL error", cause)
+) : NetraException("SSL error: ${cause?.message}", cause)
 
 class NetraSocketException(
     cause: Throwable? = null
-) : NetraException("Socket error", cause)
+) : NetraException("Socket error: ${cause?.message}", cause)
 
 class NetraNetworkException(
     message: String?,
     cause: Throwable? = null
-) : NetraException(message, cause)
+) : NetraException(message + cause?.message, cause)
