@@ -28,4 +28,4 @@ class NetraSocketException(
 class NetraNetworkException(
     message: String?,
     cause: Throwable? = null
-) : NetraException(message + cause?.message, cause)
+) : NetraException(message, cause)
