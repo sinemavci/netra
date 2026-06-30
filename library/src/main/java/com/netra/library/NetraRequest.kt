@@ -51,7 +51,6 @@ class NetraRequest<T> @PublishedApi internal constructor(
     private var offlinePolicyAction: OfflinePolicyAction? = null
     private var slowNetworkPolicyAction: SlowNetworkPolicyAction? = null
     private var retriesCount: Int? = null
-    var executor: ExecutorService? = Executors.newSingleThreadExecutor()
     private var connectivityManager = NetraConnectivityManager.getInstance(config.context)
     private var isCancelWhenDestroyed = false;
 
@@ -305,7 +304,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
     }
 
     @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
-    fun executeStream(
+    suspend fun executeStream(
         onStreamReady: (InputStream) -> Unit,
         onFailure: (Exception) -> Unit
     ) {
@@ -316,7 +315,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
 
         if (connectivityManager.isConnected()) {
             if (networkSeverity == NetworkSeverity.NORMAL) {
-                executor!!.execute {
+                return withContext(Dispatchers.IO) {
                     try {
                         val response = netraCall.call.execute()
                         if (response.isSuccessful) {
