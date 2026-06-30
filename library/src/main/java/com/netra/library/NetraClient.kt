@@ -103,8 +103,14 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
         fun build(): NetraClient {
             initCompanion(context)
 
+            val memoryCache = object : LruCache<String, MemoryCacheEntry>(cacheSize) {
+                override fun sizeOf(key: String, value: MemoryCacheEntry): Int {
+                    return value.data.size / 1024
+                }
+            }
+
             if (baseUrl != null) {
-                val config = NetraClientConfig(context, client, baseUrl!!, converter, headers)
+                val config = NetraClientConfig(context, client, baseUrl!!, converter, headers, memoryCache)
                 return NetraClient(config)
             } else {
                 throw Exception("Base url not found!")
@@ -145,15 +151,6 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
     }
 
     companion object {
-        internal val globalFailureCount = AtomicInteger(0)
-
-        internal var lastFailureTime: Long = 0
-
-        internal val memoryCache = object : LruCache<String, MemoryCacheEntry>(cacheSize) {
-            override fun sizeOf(key: String, value: MemoryCacheEntry): Int {
-                return value.data.size / 1024
-            }
-        }
         internal lateinit var client: OkHttpClient
             private set
 

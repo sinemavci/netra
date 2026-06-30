@@ -60,7 +60,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
             val data = response.data
             val json = Gson().toJson(data)
             val byteArray = json.toByteArray(Charsets.UTF_8)
-            NetraClient.memoryCache.put(cacheKey, MemoryCacheEntry(byteArray, now))
+            request.config.memoryCache.put(cacheKey, MemoryCacheEntry(byteArray, now))
 
             try {
                 if (cacheFile.exists()) {
@@ -83,7 +83,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
         val ttl = cache?.ttl ?: Cache.TTL_DEFAULT
         val now = System.currentTimeMillis()
 
-        val memEntry = NetraClient.memoryCache[cacheKey]
+        val memEntry =  request.config.memoryCache[cacheKey]
         if (memEntry != null) {
             val memAgeMs = now - memEntry.timestamp
             if (memAgeMs < ttl) {

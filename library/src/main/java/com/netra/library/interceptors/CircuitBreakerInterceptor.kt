@@ -28,14 +28,15 @@ class CircuitBreakerInterceptor(failureThreshold: Int? = 5, val retryDelayMs: Lo
                     request = netraRequest
                 )
             )
-        }
 
-        if (NetraClient.globalFailureCount.get() >= maxRetries) {
-            val timeSinceLastFailure = System.currentTimeMillis() - NetraClient.lastFailureTime
-            if (timeSinceLastFailure < 30000) {
-                throw IOException("Circuit is OPEN: Server is unstable. Try again later.")
-            } else {
-                NetraClient.globalFailureCount.set(0)
+            if (netraRequest.config.globalFailureCount.get() >= maxRetries) {
+                val timeSinceLastFailure =
+                    System.currentTimeMillis() - netraRequest.config.lastFailureTime
+                if (timeSinceLastFailure < 30000) {
+                    throw IOException("Circuit is OPEN: Server is unstable. Try again later.")
+                } else {
+                    netraRequest.config.globalFailureCount.set(0)
+                }
             }
         }
 
@@ -50,7 +51,9 @@ class CircuitBreakerInterceptor(failureThreshold: Int? = 5, val retryDelayMs: Lo
         var response: Response = currentChain.proceed(request)
         Log.e("response", "response in interceptor: ${response.code}")
 
-        while (!response.isSuccessful && shouldRetry(response) && attempt < maxRetries && !chain.call().isCanceled()) {
+        while (!response.isSuccessful && shouldRetry(response) && attempt < maxRetries && !chain.call()
+                .isCanceled()
+        ) {
 
             println("Response failed (Code: ${response.code}). Attempt $attempt of $maxRetries")
             response.close()
@@ -63,10 +66,10 @@ class CircuitBreakerInterceptor(failureThreshold: Int? = 5, val retryDelayMs: Lo
         }
 
         if (shouldRetry(response)) {
-            NetraClient.globalFailureCount.incrementAndGet()
-            NetraClient.lastFailureTime = System.currentTimeMillis()
+            netraRequest?.config?.globalFailureCount?.incrementAndGet()
+            netraRequest?.config?.lastFailureTime = System.currentTimeMillis()
         } else if (response.isSuccessful) {
-            NetraClient.globalFailureCount.set(0)
+            netraRequest?.config?.globalFailureCount?.set(0)
         }
 
         return response

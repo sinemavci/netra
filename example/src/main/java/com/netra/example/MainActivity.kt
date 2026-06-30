@@ -149,7 +149,7 @@ class MainActivity : ComponentActivity() {
 //            )
 //            .build()
 
-        val request = client!!.get("/?status=200&delay=3000")
+        val request = client!!.get("/?status=500&delay=2000")
             .slowMode()
             .addHeaders(mapOf("headercustom2" to "custom"))
             .asObject<Any>()
@@ -402,7 +402,7 @@ class MainActivity : ComponentActivity() {
         client = NetraClient.Builder(applicationContext)
             .addConverterFactory(NetraGsonConverter())
             .baseUrl("http://10.0.2.2:3001")
-//            .circuitBreaker()
+            .circuitBreaker()
 //            .addInterceptor(object : NetraInterceptor {
 //                override fun intercept(chain: NetraInterceptor.NetraChain): NetraResponse {
 ////                    var attempt = 0
