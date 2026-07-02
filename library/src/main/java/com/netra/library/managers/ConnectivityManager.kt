@@ -5,10 +5,9 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import androidx.annotation.RequiresPermission
-import com.netra.library.NetraClient.Companion.client
 import com.netra.library.enums.NetworkSeverity
-import com.netra.library.managers.OfflineQueueManager
 import com.netra.library.managers.ObserverManager
+import com.netra.library.managers.OfflineQueueManager
 import com.netra.library.observers.NetworkEvent
 
 internal class NetraConnectivityManager private constructor(
@@ -45,7 +44,7 @@ internal class NetraConnectivityManager private constructor(
         return result
     }
 
-    init {
+    fun init() {
         val networkRequest = NetworkRequest.Builder()
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
@@ -55,7 +54,7 @@ internal class NetraConnectivityManager private constructor(
         val networkCallback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 ObserverManager.notifyNetworkEvent(NetworkEvent.ConnectionRestored)
-                OfflineQueueManager.processQueue(client = client)
+                OfflineQueueManager.processQueue()
                 super.onAvailable(network)
             }
         }

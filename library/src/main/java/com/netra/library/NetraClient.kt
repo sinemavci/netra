@@ -1,6 +1,5 @@
 package com.netra.library
 
-import android.app.Application
 import android.content.Context
 import androidx.collection.LruCache
 import com.netra.library.converter.IConverter
@@ -10,9 +9,7 @@ import com.netra.library.interceptors.BaseInterceptor
 import com.netra.library.interceptors.CircuitBreakerInterceptor
 import com.netra.library.interceptors.NetraInterceptor
 import com.netra.library.managers.CancelRequestManager
-import com.netra.library.managers.LifecycleCallbacks
 import com.netra.library.managers.MemoryCacheEntry
-import com.netra.library.managers.OfflineQueueManager
 import com.netra.library.managers.ObserverManager
 import com.netra.library.managers.cacheSize
 import com.netra.library.observers.INetraObserver
@@ -23,7 +20,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import java.util.UUID
-import java.util.concurrent.atomic.AtomicInteger
 
 class NetraClient private constructor(internal val config: NetraClientConfig) {
     var id: String = UUID.randomUUID().mostSignificantBits.toString()
@@ -43,6 +39,8 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
     data class Builder(
         val context: Context,
         var baseUrl: String? = null,
+        var client: OkHttpClient = OkHttpClient().newBuilder()
+            .addInterceptor(BaseInterceptor()).build(),
         var converter: IConverter? = NetraGsonConverter(),
         var headers: MutableMap<String, String> = mutableMapOf(),
     ) {
@@ -101,8 +99,6 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
         }
 
         fun build(): NetraClient {
-            initCompanion(context)
-
             val memoryCache = object : LruCache<String, MemoryCacheEntry>(cacheSize) {
                 override fun sizeOf(key: String, value: MemoryCacheEntry): Int {
                     return value.data.size / 1024
@@ -148,24 +144,5 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
             config,
             Command.Delete(config.baseUrl + path, requestBody),
         )
-    }
-
-    companion object {
-        internal lateinit var client: OkHttpClient
-            private set
-
-        internal fun initCompanion(context: Context) {
-            if (!::client.isInitialized) {
-                client =
-                    OkHttpClient().newBuilder().addInterceptor(BaseInterceptor()).build()
-            }
-
-            OfflineQueueManager.init(context.applicationContext)
-
-            val application = context.applicationContext as Application
-            application.registerActivityLifecycleCallbacks(
-                LifecycleCallbacks()
-            )
-        }
     }
 }

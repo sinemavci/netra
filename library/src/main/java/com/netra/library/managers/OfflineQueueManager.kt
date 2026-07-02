@@ -21,6 +21,7 @@ import java.util.UUID
 
 object OfflineQueueManager {
     private lateinit var dao: QueueDao
+    private val client = OkHttpClient()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     fun init(context: Context) {
@@ -55,7 +56,7 @@ object OfflineQueueManager {
         }
     }
 
-    fun processQueue(client: OkHttpClient) {
+    fun processQueue() {
         val gson = Gson()
         scope.launch {
             //todo: check call is cancelled before?, converted is not enable, and enqueue not exist

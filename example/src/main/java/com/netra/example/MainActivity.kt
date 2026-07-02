@@ -139,9 +139,139 @@ class MainActivity : ComponentActivity() {
             null
         }
     }
+
     fun handleGet() {
+        val client = NetraClient.Builder(applicationContext)
+            .addConverterFactory(NetraGsonConverter())
+            .baseUrl("http://10.0.2.2:3001").build()
+
+        val request = client.get("/?status=200&delay=2000")
+            .slowMode()
+            .addHeaders(mapOf("headercustom2" to "custom"))
+            .asObject<Any>()
+//            .withCache(Cache())
+            .cancelWhenDestroyed()
+            .whenSlowNetwork(SlowNetworkPolicyAction.TIMEOUT(2000.milliseconds))
+            .whenOffline(OfflinePolicyAction.QUEUE)
+            .addObserver(object : INetraObserver {
+                override fun onNetworkChanged(event: NetworkEvent) {
+                    Log.e(
+                        "",
+                        "request NetworkEvent observer here: ${event}}"
+                    )
+                }
+
+                override fun onCacheChanged(event: CacheEvent) {
+                    when (event) {
+                        is CacheEvent.StaleCacheUsed -> {
+                            Log.e(
+                                "",
+                                "StaleCacheUsed: ${event.request.command.url} ${event.ageMs} ${event.expiredByMs}}"
+                            )
+                        }
+
+                        is CacheEvent.CacheMiss -> {
+                            Log.e(
+                                "",
+                                "CacheMiss: ${event.request.command.url}"
+                            )
+                        }
+
+                        is CacheEvent.CacheExpired -> {
+                            Log.e(
+                                "",
+                                "CacheExpired: ${event.request.command.url} ${event.ageMs} ${event.expiredByMs}}"
+                            )
+                        }
+
+                        is CacheEvent.CacheStored -> {
+                            Log.e(
+                                "",
+                                "CacheStored: ${event.request.command} ${event.ageMs}}"
+                            )
+                        }
+
+                        is CacheEvent.CacheHit -> {
+                            Log.e(
+                                "",
+                                "CacheHit: ${event.request.command.url} ${event.ageMs}"
+                            )
+                        }
+                    }
+                }
+
+                override fun onRequestChanged(event: RequestEvent) {
+                    when (event) {
+                        is RequestEvent.RequestExecuted -> {
+                            Log.e(
+                                "",
+                                "RequestExecuted: ${event.request.command.url} "
+                            )
+                        }
+                        is RequestEvent.RequestSuccess -> {
+                            Log.e(
+                                "",
+                                "RequestSuccess: ${event.request.command.url} response: ${event.response.statusCode} ${event.response.data}"
+                            )
+                        }
+                        is RequestEvent.RequestFailed -> {
+                            Log.e(
+                                "",
+                                "RequestFailed: ${event.request.command.url} response: ${event.response?.statusCode} ${event.response?.data}"
+                            )
+                        }
+                    }
+                }
+
+                override fun onQueueChanged(event: QueueEvent) {
+                    when(event) {
+                        is QueueEvent.RequestQueued -> {
+                            Log.e(
+                                "",
+                                "RequestQueued: ${event.url} queueOrder: ${event.queueOrder} createdAt: ${event.createdAt}"
+                            )
+                        }
+
+                        is QueueEvent.QueuedRequestSuccess -> {
+                            Log.e(
+                                "",
+                                "QueuedRequestSuccess: ${event.url} statusCode: ${event.response.statusCode} data: ${event.response.data}"
+                            )
+                        }
+
+                        is QueueEvent.QueuedRequestExecuted -> {
+                            Log.e(
+                                "",
+                                "QueuedRequestExecuted: ${event.url}}"
+                            )
+                        }
+
+                        is QueueEvent.QueuedRequestFailed -> {
+                            Log.e(
+                                "",
+                                "QueuedRequestFailed: ${event.url}}"
+                            )
+                        }
+                    }
+                }
+            })
+
+        try {
+            request.enqueue { result, exception ->
+                Log.e(
+                    "result is success",
+                    "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
+                )
+                Log.e("", "exeption: ${exception?.message} --- ${exception?.cause}")
+            }
+        } catch (e: NetraException) {
+            Log.e("", "error execute: ${e.message}")
+        }
+
+    }
+    fun handleGet1() {
 //        val client = NetraClient.Builder(applicationContext)
-//            .baseUrl("http://10.0.2.2:3001")                                                                                                                                                                                                                                 
+//            .baseUrl("http://10.0.2.2:3001")
 //            .circuitBreaker()
 //            .addHeaders(mapOf("headercustom1" to "custom"))
 //            .addConverterFactory(
@@ -156,7 +286,7 @@ class MainActivity : ComponentActivity() {
 //            .withCache(Cache())
             .cancelWhenDestroyed()
             .whenSlowNetwork(SlowNetworkPolicyAction.TIMEOUT(2000.milliseconds))
-            .whenOffline(OfflinePolicyAction.RETRY(4, 3.seconds))
+            .whenOffline(OfflinePolicyAction.QUEUE)
             .addObserver(object : INetraObserver {
                 override fun onNetworkChanged(event: NetworkEvent) {
                     Log.e(
@@ -441,6 +571,15 @@ class MainActivity : ComponentActivity() {
                         Text(
                             text = "press",
                         )
+                        Button(
+                            onClick = {
+                                handleGet1()
+                            }
+                        ) {
+                            Text(
+                                text = "get1",
+                            )
+                        }
                         Button(
                             onClick = {
                                 handleGet()
