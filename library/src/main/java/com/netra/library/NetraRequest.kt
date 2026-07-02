@@ -379,8 +379,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
             when (offlinePolicyAction) {
                 is OfflinePolicyAction.QUEUE -> {
                     OfflineQueueManager.push(netraCall.call.request())
-                    //todo
-                   // netraResponse = getNetraFailedResponse(null)
+                    throw ResponseUtil.mapException(Exception("Request queued for later execution"))
                 }
 
                 is OfflinePolicyAction.RETRY -> {
