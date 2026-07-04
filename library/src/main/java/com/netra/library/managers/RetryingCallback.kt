@@ -1,4 +1,4 @@
-package com.netra.library
+package com.netra.library.managers
 
 import okhttp3.Call
 import okhttp3.Callback
