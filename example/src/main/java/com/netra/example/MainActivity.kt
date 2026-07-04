@@ -279,14 +279,14 @@ class MainActivity : ComponentActivity() {
 //            )
 //            .build()
 
-        val request = client!!.get("/?status=500&delay=2000")
+        val request = client!!.get("/?status=200&delay=2000")
             .slowMode()
             .addHeaders(mapOf("headercustom2" to "custom"))
             .asObject<Any>()
 //            .withCache(Cache())
             .cancelWhenDestroyed()
             .whenSlowNetwork(SlowNetworkPolicyAction.TIMEOUT(2000.milliseconds))
-            .whenOffline(OfflinePolicyAction.QUEUE)
+            .whenOffline(OfflinePolicyAction.USE_CACHE)
             .addObserver(object : INetraObserver {
                 override fun onNetworkChanged(event: NetworkEvent) {
                     Log.e(

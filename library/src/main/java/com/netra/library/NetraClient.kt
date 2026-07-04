@@ -1,7 +1,6 @@
 package com.netra.library
 
 import android.content.Context
-import androidx.collection.LruCache
 import com.netra.library.converter.IConverter
 import com.netra.library.converter.NetraGsonConverter
 import com.netra.library.enums.Command
@@ -9,9 +8,7 @@ import com.netra.library.interceptors.BaseInterceptor
 import com.netra.library.interceptors.CircuitBreakerInterceptor
 import com.netra.library.interceptors.NetraInterceptor
 import com.netra.library.managers.CancelRequestManager
-import com.netra.library.managers.MemoryCacheEntry
 import com.netra.library.managers.ObserverManager
-import com.netra.library.managers.cacheSize
 import com.netra.library.observers.INetraObserver
 import com.netra.library.observers.RequestEvent
 import com.netra.library.utils.ResponseUtil
@@ -99,14 +96,8 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
         }
 
         fun build(): NetraClient {
-            val memoryCache = object : LruCache<String, MemoryCacheEntry>(cacheSize) {
-                override fun sizeOf(key: String, value: MemoryCacheEntry): Int {
-                    return value.data.size / 1024
-                }
-            }
-
             if (baseUrl != null) {
-                val config = NetraClientConfig(context, client, baseUrl!!, converter, headers, memoryCache)
+                val config = NetraClientConfig(context, client, baseUrl!!, converter, headers)
                 return NetraClient(config)
             } else {
                 throw Exception("Base url not found!")

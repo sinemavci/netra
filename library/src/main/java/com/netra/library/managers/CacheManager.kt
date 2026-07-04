@@ -1,10 +1,10 @@
 package com.netra.library.managers
 
 import android.content.Context
+import androidx.collection.LruCache
 import com.google.gson.Gson
 import com.netra.library.Cache
 import com.netra.library.observers.CacheEvent
-import com.netra.library.NetraClient
 import com.netra.library.NetraRequest
 import com.netra.library.NetraResponse
 import java.io.File
@@ -35,9 +35,6 @@ internal data class MemoryCacheEntry(
     }
 }
 
-val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
-val cacheSize = maxMemory / 8
-
 internal class CacheManager(val context: Context, val request: NetraRequest<*>) {
     var cache: Cache? = null
     private fun getCacheKey(): String {
@@ -60,7 +57,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
             val data = response.data
             val json = Gson().toJson(data)
             val byteArray = json.toByteArray(Charsets.UTF_8)
-            request.config.memoryCache.put(cacheKey, MemoryCacheEntry(byteArray, now))
+            memoryCache.put(cacheKey, MemoryCacheEntry(byteArray, now))
 
             try {
                 if (cacheFile.exists()) {
@@ -83,7 +80,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
         val ttl = cache?.ttl ?: Cache.TTL_DEFAULT
         val now = System.currentTimeMillis()
 
-        val memEntry =  request.config.memoryCache[cacheKey]
+        val memEntry =  memoryCache[cacheKey]
         if (memEntry != null) {
             val memAgeMs = now - memEntry.timestamp
             if (memAgeMs < ttl) {
@@ -138,6 +135,17 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
             )
         } else {
             return null
+        }
+    }
+
+    companion object {
+        val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
+        val cacheSize = maxMemory / 8
+
+        val memoryCache = object : LruCache<String, MemoryCacheEntry>(cacheSize) {
+            override fun sizeOf(key: String, value: MemoryCacheEntry): Int {
+                return value.data.size / 1024
+            }
         }
     }
 }
