@@ -117,13 +117,9 @@ class NetraRequest<T> @PublishedApi internal constructor(
         CancelRequestManager.remove(id)
         try {
             val _response = ResponseUtil.okHttpResponseToNetra(response, this) as NetraResponse<T>
-            Log.e("", "case 1: ${_response.data}")
             callback(_response, null)
-            Log.e("", "case 2")
             if (response.isSuccessful) {
-                Log.e("", "case 3")
                 cacheManager.writeCacheResponse(_response as NetraResponse<*>?)
-                Log.e("", "case 4")
                 ObserverManager.notifyRequestEvent(
                     RequestEvent.RequestSuccess(
                         request = this,
