@@ -19,13 +19,13 @@ sealed interface QueueEvent {
     // Fresh network response successfully written to cache.
     data class QueuedRequestSuccess(
         val url: String,
-        val response: NetraResponse,
+        val response: NetraResponse<*>,
     ) : QueueEvent
 
     // Queued network response failed.
     data class QueuedRequestFailed(
         val url: String,
-        val response: NetraResponse?,
+        val response: NetraResponse<*>?,
         val exception: NetraException?,
     ) : QueueEvent
 }

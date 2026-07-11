@@ -4,10 +4,10 @@ import com.netra.library.NetraResponse
 import okhttp3.Request
 
 interface NetraInterceptor {
-    fun intercept(chain: NetraChain): NetraResponse
+    fun intercept(chain: NetraChain): NetraResponse<*>
 
     interface NetraChain {
         fun request(): Request
-        fun proceed(request: Request): NetraResponse
+        fun proceed(request: Request): NetraResponse<*>
     }
 }

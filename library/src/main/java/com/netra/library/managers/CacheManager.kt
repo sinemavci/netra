@@ -49,12 +49,12 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
         return (now - lastModified)
     }
 
-    fun writeCacheResponse(response: NetraResponse) {
+    fun writeCacheResponse(response: NetraResponse<*>?) {
         cache?.let {
             val cacheKey = getCacheKey()
             val now = System.currentTimeMillis()
             val cacheFile = File(context.cacheDir, cacheKey)
-            val data = response.data
+            val data = response?.data
             val json = Gson().toJson(data)
             val byteArray = json.toByteArray(Charsets.UTF_8)
             memoryCache.put(cacheKey, MemoryCacheEntry(byteArray, now))
@@ -75,7 +75,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
         }
     }
 
-    fun getCache(allowExpired: Boolean): NetraResponse? {
+    fun getCache(allowExpired: Boolean): NetraResponse<*>? {
         val cacheKey = getCacheKey()
         val ttl = cache?.ttl ?: Cache.TTL_DEFAULT
         val now = System.currentTimeMillis()
@@ -87,7 +87,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
                 ObserverManager.notifyCacheEvent(CacheEvent.CacheHit(request, ttl, memAgeMs))
                 val convertedResponse = request.handleConvertedResponse(memEntry.data)
                 return NetraResponse(
-                    data = mapOf("data" to convertedResponse),
+                    data = convertedResponse,
                     statusCode = 200,
                     statusMessage = null,
                     isCache = true,
@@ -128,7 +128,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
         if (result != null) {
             val convertedResponse = request.handleConvertedResponse(result)
             return NetraResponse(
-                data = mapOf("data" to convertedResponse),
+                data = convertedResponse,
                 statusCode = 200,
                 statusMessage = null,
                 isCache = true,

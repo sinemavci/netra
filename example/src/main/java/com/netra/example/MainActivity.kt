@@ -279,10 +279,10 @@ class MainActivity : ComponentActivity() {
 //            )
 //            .build()
 
-        val request = client!!.get("/?status=200&delay=2000")
+        val request = client.get("/users/octocat/repos")
             .slowMode()
             .addHeaders(mapOf("headercustom2" to "custom"))
-            .asObject<Any>()
+            .asList<Repo>()
 //            .withCache(Cache())
             .cancelWhenDestroyed()
             .whenSlowNetwork(SlowNetworkPolicyAction.TIMEOUT(2000.milliseconds))
@@ -390,26 +390,26 @@ class MainActivity : ComponentActivity() {
                 }
             })
 
-//        try {
-//            CoroutineScope(Dispatchers.IO).launch {
-//                val result = request.execute()
-//                Log.e("", " execute: ${result.statusCode} ${result.data}")
-//            }
-//        } catch (e: NetraException) {
-//            Log.e("", "error execute: ${e.message}")
-//        }
-//
         try {
-            request.enqueue { result, exception ->
-                Log.e(
-                    "result is success",
-                    "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
-                )
-                Log.e("", "exeption: ${exception?.message} --- ${exception?.cause}")
+            CoroutineScope(Dispatchers.IO).launch {
+                val result = request.execute()
+                Log.e("", " execute: ${result.statusCode} ${result.data}")
             }
         } catch (e: NetraException) {
             Log.e("", "error execute: ${e.message}")
         }
+//
+//        try {
+//            request.enqueue { result, exception ->
+//                Log.e(
+//                    "result is success",
+//                    "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data}"
+//                )
+//                Log.e("", "exeption: ${exception?.message} --- ${exception?.cause}")
+//            }
+//        } catch (e: NetraException) {
+//            Log.e("", "error execute: ${e.message}")
+//        }
 
         Handler(Looper.getMainLooper()).postDelayed({
          //   Log.e("", "cancelled")
@@ -531,7 +531,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         client = NetraClient.Builder(applicationContext)
             .addConverterFactory(NetraGsonConverter())
-            .baseUrl("http://10.0.2.2:3001")
+            //.baseUrl("http://10.0.2.2:3001")
+            .baseUrl("https://api.github.com")
             .circuitBreaker()
 //            .addInterceptor(object : NetraInterceptor {
 //                override fun intercept(chain: NetraInterceptor.NetraChain): NetraResponse {

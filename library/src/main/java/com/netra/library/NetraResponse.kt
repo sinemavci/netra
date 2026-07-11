@@ -1,7 +1,7 @@
 package com.netra.library
 
-data class NetraResponse(
-    val data: Map<String, Any?>?,
+data class NetraResponse<T>(
+    val data: T?,
     val statusCode: Int,
     val statusMessage: String?,
     val isCache: Boolean?,

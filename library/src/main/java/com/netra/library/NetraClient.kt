@@ -64,7 +64,7 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
                             return okHttpRequest
                         }
 
-                        override fun proceed(request: Request): NetraResponse {
+                        override fun proceed(request: Request): NetraResponse<*> {
                             val okHttpResponse = chain.proceed(request)
                             return ResponseUtil.okHttpResponseToNetra(okHttpResponse, netraRequest!!)
                         }

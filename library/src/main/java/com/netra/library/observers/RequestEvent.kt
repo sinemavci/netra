@@ -13,13 +13,13 @@ sealed interface RequestEvent {
     // Request completed seamlessly.
     data class RequestSuccess(
         val request: NetraRequest<*>,
-        val response: NetraResponse,
+        val response: NetraResponse<*>,
     ) : RequestEvent
 
     // Request failed.
     data class RequestFailed(
         val request: NetraRequest<*>,
-        val response: NetraResponse?,
+        val response: NetraResponse<*>?,
         val exception: NetraException?,
     ) : RequestEvent
 
