@@ -285,7 +285,7 @@ class MainActivity : ComponentActivity() {
             .asList<Repo>()
 //            .withCache(Cache())
             .cancelWhenDestroyed()
-            .whenSlowNetwork(SlowNetworkPolicyAction.TIMEOUT(2000.milliseconds))
+            .whenSlowNetwork(SlowNetworkPolicyAction.WAIT(3.seconds))
             .whenOffline(OfflinePolicyAction.USE_CACHE)
             .addObserver(object : INetraObserver {
                 override fun onNetworkChanged(event: NetworkEvent) {

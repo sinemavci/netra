@@ -495,7 +495,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                     is SlowNetworkPolicyAction.WAIT -> {
                         Handler(Looper.getMainLooper()).postDelayed({
                             enqueueCommand(call, callback)
-                        }, (slowNetworkPolicyAction as SlowNetworkPolicyAction.WAIT).delay)
+                        }, (slowNetworkPolicyAction as SlowNetworkPolicyAction.WAIT).delay.inWholeMilliseconds)
                     }
 
                     else -> {
