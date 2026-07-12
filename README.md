@@ -5,22 +5,36 @@ Netra provides:
 
 - ⚡ Simple and fluent API
 - 📦 GET, POST, PUT, PATCH, DELETE support
-- 🧠 Smart caching system
+- 🧠 Smart caching system (memory + disk)
 - 📡 Offline request queueing
 - 🐢 Slow network handling strategies
 - 👀 Request lifecycle observers
 - 🖼 Multipart file/image upload
 - 🔄 Automatic queued request restoration
-- 🧩 Converter support (`Kotlinx Serialization`, Gson, etc.)
+- 🧩 Converter support (`Kotlinx Serialization`, `Gson`, `Moshi`)
 - 🛑 Request cancellation
 - 🔥 Circuit breaker support
 - 🧵 Coroutine-friendly
 - 🛜 Custom headers support
+
 ---
 
-# Basic Usage
+## Requirements
 
-## Create Client
+Add the following permission to your `AndroidManifest.xml`:
+
+```xml
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+<uses-permission android:name="android.permission.INTERNET" />
+```
+
+Netra initializes automatically via `ContentProvider` — no `Application` class setup required.
+
+---
+
+## Basic Usage
+
+### Create Client
 
 ```kotlin
 val client = NetraClient.Builder(applicationContext)
@@ -30,24 +44,56 @@ val client = NetraClient.Builder(applicationContext)
 
 ---
 
-# GET Request
+## Typed Responses with `asObject<T>`
+
+Netra uses Kotlin reified generics to deserialize responses directly into your model — no casting required.
+
+```kotlin
+data class User(val id: Int, val name: String)
+
+client.get("/users/1")
+    .asObject<User>()
+    .enqueue { result, exception ->
+        val user: User? = result?.data  // direkt User, cast yok
+    }
+```
+
+For lists:
 
 ```kotlin
 client.get("/users")
-    .asObject<Any>()
-    .enqueue { result ->
-        println(result?.data)
+    .asList<User>()
+    .enqueue { result, exception ->
+        val users: List<User>? = result?.data
     }
-```
-or
-```kotlin
-val request = client.get("/users").asObject<Any>()
-val response = request.execute()
 ```
 
 ---
 
-# POST Request
+## GET Request
+
+```kotlin
+client.get("/users")
+    .asObject<Any>()
+    .enqueue { result, exception ->
+        println(result?.data)
+        println(exception?.message)
+    }
+```
+
+Synchronous:
+
+```kotlin
+val response = client.get("/users")
+    .asObject<Any>()
+    .execute()
+
+println(response.statusCode)
+```
+
+---
+
+## POST Request
 
 ```kotlin
 val json = """
@@ -61,229 +107,289 @@ val body = NetraRequestBody.create(json)
 
 client.post("/users", body)
     .asObject<Any>()
-    .enqueue { result ->
+    .enqueue { result, exception ->
         println(result?.statusCode)
+        println(exception?.message)
     }
 ```
 
 ---
 
-# PUT Request
+## PUT Request
 
 ```kotlin
 client.put("/users/1", body)
     .asObject<Any>()
-    .enqueue { result ->
+    .enqueue { result, exception ->
         println(result?.statusCode)
     }
 ```
 
 ---
 
-# PATCH Request
+## PATCH Request
 
 ```kotlin
 client.patch("/users/1", body)
     .asObject<Any>()
-    .enqueue { result ->
+    .enqueue { result, exception ->
         println(result?.statusCode)
     }
 ```
 
 ---
 
-# DELETE Request
+## DELETE Request
 
 ```kotlin
 client.delete("/users/1")
     .asObject<Any>()
-    .enqueue { result ->
+    .enqueue { result, exception ->
         println(result?.statusCode)
     }
 ```
 
 ---
 
-# Synchronous Request
+## Example Response
 
 ```kotlin
-val response = client.get("/users")
-    .asObject<Any>()
-    .execute()
+result?.statusCode      // Int
+result?.statusMessage   // String?
+result?.headers         // Map<String, String>?
+result?.data            // T?
+result?.isCache         // Boolean? — true if served from cache
+```
 
-println(response.statusCode)
+### Exception Types
+
+| Exception | Description |
+|---|---|
+| `NetraTimeoutException` | Request timed out |
+| `NetraDnsException` | DNS resolution failed |
+| `NetraConnectionException` | Could not connect to server |
+| `NetraSslException` | SSL/TLS error |
+| `NetraSocketException` | Socket-level error |
+| `NetraNetworkException` | General network error |
+
+```kotlin
+client.get("/users")
+    .asObject<Any>()
+    .enqueue { result, exception ->
+        when (exception) {
+            is NetraTimeoutException -> println("Timeout!")
+            is NetraConnectionException -> println("No connection!")
+            else -> println(exception?.message)
+        }
+    }
 ```
 
 ---
 
-# Cache Support
-
-## Enable Cache
+## Cache Support
 
 ```kotlin
 client.get("/users")
+    .asObject<Any>()
     .withCache(Cache())
-    .enqueue { result ->
+    .enqueue { result, exception ->
+        println(result?.isCache)  // true if from cache
         println(result?.data)
     }
 ```
 
-# Offline Support
+Custom TTL (milliseconds):
 
-Netra can automatically queue requests while the device is offline.
+```kotlin
+.withCache(Cache(ttl = 60_000L))  // 1 minute
+```
+
+---
+
+## Offline Support
+
+Netra can automatically handle requests when the device is offline.
 
 ```kotlin
 client.get("/users")
+    .asObject<Any>()
     .whenOffline(OfflinePolicyAction.QUEUE)
+    .enqueue { result, exception -> }
 ```
 
 Available offline actions:
 
-| Action | Description                                        |
-|---|----------------------------------------------------|
-| `QUEUE` | Stores request and retries later                   |
-| `USE_CACHE` | Uses cached response                               |
-| `RETRY` | Client send request retries times until successful |
-| `THROW_ERROR` | Throws network error                               |
+| Action | Description |
+|---|---|
+| `QUEUE` | Stores request and retries automatically when connection is restored |
+| `USE_CACHE` | Returns cached response if available |
+| `RETRY(retries, retryInterval)` | Retries the request N times with a given interval |
+| `THROW_ERROR` | Immediately throws a network error |
 
-
----
-
-# Slow Network Strategies
+### RETRY example:
 
 ```kotlin
 client.get("/users")
+    .asObject<Any>()
+    .whenOffline(OfflinePolicyAction.RETRY(retries = 3, retryInterval = 2.seconds))
+    .enqueue { result, exception -> }
+```
+
+---
+
+## Slow Network Strategies
+
+```kotlin
+client.get("/users")
+    .asObject<Any>()
     .whenSlowNetwork(SlowNetworkPolicyAction.USE_CACHE)
+    .enqueue { result, exception -> }
 ```
 
 Available actions:
 
-| Action | Description                                                                                                                          |
-|---|--------------------------------------------------------------------------------------------------------------------------------------|
-| `USE_CACHE` | Returns cache immediately                                                                                                            |
-| `WAIT` | Waits for network response                                                                                                           |
-| `TIMEOUT` | Set callTimeout to client and waits until timeout. If the client can not continue receive data within timeout duration, throws error |
+| Action | Description |
+|---|---|
+| `USE_CACHE` | Returns cached response immediately |
+| `WAIT(delay)` | Waits the given duration before sending the request |
+| `TIMEOUT(duration)` | Applies a strict timeout; throws error if exceeded |
+
+### TIMEOUT example:
+
+```kotlin
+.whenSlowNetwork(SlowNetworkPolicyAction.TIMEOUT(2000.milliseconds))
+```
 
 ---
 
-# Observers
+## Observers
 
-Attach observers to monitor request lifecycle events.
+Attach observers to monitor request, cache, queue, and network lifecycle events.
 
 ```kotlin
 client.get("/users")
+    .asObject<Any>()
     .addObserver(object : INetraObserver {
 
-        override fun onNetworkChanged(event: NetworkEvent) {
-            Log.e("", "Network changed: $event")
+        override fun onRequestChanged(event: RequestEvent) {
+            when (event) {
+                is RequestEvent.RequestExecuted -> println("Executing: ${event.request.command.url}")
+                is RequestEvent.RequestSuccess -> println("Success: ${event.response.statusCode}")
+                is RequestEvent.RequestFailed -> println("Failed: ${event.exception?.message}")
+            }
         }
 
         override fun onCacheChanged(event: CacheEvent) {
             when (event) {
-                is CacheEvent.StaleCacheUsed -> {
-                    Log.e(
-                        "",
-                        "StaleCacheUsed: ${event.key} ${event.ageMs} ${event.expiredByMs}}"
-                    )
-                }
-
-                is CacheEvent.CacheMiss -> {
-                    Log.e(
-                        "",
-                        "CacheMiss: ${event.key}"
-                    )
-                }
-
-                is CacheEvent.CacheExpired -> {
-                    Log.e(
-                        "",
-                        "CacheExpired: ${event.key} ${event.ageMs} ${event.expiredByMs}}"
-                    )
-                }
-
-                is CacheEvent.CacheStored -> {
-                    Log.e(
-                        "",
-                        "CacheStored: ${event.key} ${event.ageMs}}"
-                    )
-                }
-
-                is CacheEvent.CacheHit -> {
-                    Log.e(
-                        "",
-                        "CacheHit: ${event.key} ${event.ageMs}"
-                    )
-                }
+                is CacheEvent.CacheHit -> println("Cache hit: age ${event.ageMs}ms")
+                is CacheEvent.CacheMiss -> println("Cache miss")
+                is CacheEvent.CacheStored -> println("Cache stored")
+                is CacheEvent.CacheExpired -> println("Cache expired")
+                is CacheEvent.StaleCacheUsed -> println("Stale cache used: expired by ${event.expiredByMs}ms")
             }
         }
 
-        override fun onQueueChanged(event: RequestQueuedEvent) {
+        override fun onQueueChanged(event: QueueEvent) {
             when (event) {
-                is RequestQueuedEvent.RequestQueued -> {
-                    Log.e(
-                        "",
-                        "RequestQueued: ${event.key} queueOrder: ${event.queueOrder}"
-                    )
-                }
-                is RequestQueuedEvent.QueuedRequestRestored -> {
-                    Log.e(
-                        "",
-                        "QueuedRequestRestored: ${event.key}"
-                    )
-                }
-                is RequestQueuedEvent.QueuedRequestExecuted -> {
-                    Log.e(
-                        "",
-                        "QueuedRequestExecuted: ${event.key} statusCode: ${event.response.statusCode}"
-                    )
-                }
-                is RequestQueuedEvent.QueuedRequestFailed -> {
-                    Log.e(
-                        "",
-                        "QueuedRequestFailed: ${event.key}"
-                    )
-                }
+                is QueueEvent.RequestQueued -> println("Queued: ${event.url} order: ${event.queueOrder}")
+                is QueueEvent.QueuedRequestExecuted -> println("Queue executing: ${event.url}")
+                is QueueEvent.QueuedRequestSuccess -> println("Queue success: ${event.response.statusCode}")
+                is QueueEvent.QueuedRequestFailed -> println("Queue failed: ${event.url}")
+            }
+        }
+
+        override fun onNetworkChanged(event: NetworkEvent) {
+            when (event) {
+                is NetworkEvent.Offline -> println("Offline")
+                is NetworkEvent.SlowNetwork -> println("Slow network")
+                is NetworkEvent.ConnectionRestored -> println("Connection restored")
             }
         }
     })
+    .enqueue { result, exception -> }
 ```
 
-## Cache Events
+All methods have default (empty) implementations — override only what you need:
 
-Netra provides detailed cache lifecycle events to help developers monitor cache behavior and debug networking flows.
+```kotlin
+.addObserver(object : INetraObserver {
+    override fun onRequestChanged(event: RequestEvent) {
+        // only this, others are no-ops
+    }
+})
+```
 
-| Event | Description | Typical Scenario |
-|---|---|---|
-| `CacheHit` | Triggered when valid cached data is found and returned successfully. | User opens a screen and data is loaded directly from cache without a network request. |
-| `CacheMiss` | Triggered when no cache entry exists for the requested resource. | First request to an endpoint before any cache has been stored. |
-| `CacheStored` | Triggered after a successful network response is saved into cache storage. | Fresh API response is persisted for future offline or fast access usage. |
-| `CacheExpired` | Triggered when cached data exists but its expiration time has passed. | SDK checks cache age and determines it is no longer valid. |
-| `StaleCacheUsed` | Triggered when expired cache data is intentionally returned as a fallback strategy. | Network is slow/offline and SDK serves expired cache to improve UX. |
+### Cache Events
 
-## Queue Events
-Netra exposes detailed queue lifecycle events.
+| Event | Description |
+|---|---|
+| `CacheHit` | Valid cached data found and returned |
+| `CacheMiss` | No cache entry exists |
+| `CacheStored` | Response saved to cache |
+| `CacheExpired` | Cache exists but TTL has passed |
+| `StaleCacheUsed` | Expired cache returned as fallback |
 
-Available events:
+### Queue Events
 
-- `RequestQueued`
-- `QueuedRequestRestored`
-- `QueuedRequestExecuted`
-- `QueuedRequestFailed`
+| Event | Description |
+|---|---|
+| `RequestQueued` | Request stored in offline queue |
+| `QueuedRequestExecuted` | Queued request is being retried |
+| `QueuedRequestSuccess` | Queued request succeeded |
+| `QueuedRequestFailed` | Queued request failed on retry |
 
-## Network Events
-Netra exposes detailed connection lifecycle events.
+### Network Events
 
-Available events:
-
-- `Offline`
-- `SlowNetwork`
-- `ConnectionRestored`
+| Event | Description |
+|---|---|
+| `Offline` | Device lost internet connection |
+| `SlowNetwork` | Network is congested or degraded |
+| `ConnectionRestored` | Internet connection is back |
 
 ---
 
-# Multipart Upload
+## Streaming
 
-## Upload Image
+For large responses (images, files, audio), use `executeStream` to consume data chunk by chunk without loading it all into memory.
+
+```kotlin
+coroutineScope.launch {
+    client.get("/video")
+        .asObject<ByteArray>()
+        .executeStream(
+            onStreamReady = { inputStream ->
+                val buffer = ByteArray(8192)
+                var bytesRead: Int
+                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                    val chunk = buffer.copyOfRange(0, bytesRead)
+                    // process chunk
+                }
+            },
+            onFailure = { exception ->
+                println("Stream failed: ${exception.message}")
+            }
+        )
+}
+```
+
+---
+
+## Download Image
+
+```kotlin
+client.get("/image")
+    .asObject<ByteArray>()
+    .enqueue { result, exception ->
+        val bytes: ByteArray? = result?.data
+        if (bytes != null) {
+            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        }
+    }
+```
+
+---
+
+## Multipart Upload
 
 ```kotlin
 val part = NetraPart.file(
@@ -293,126 +399,87 @@ val part = NetraPart.file(
     mimeType = "image/jpeg"
 )
 
-val body = NetraRequestBody.multipart(
-    listOf(part)
-)
+val body = NetraRequestBody.multipart(listOf(part))
 
 client.post("/upload", body)
     .asObject<Any>()
-    .enqueue { result ->
+    .enqueue { result, exception ->
         println(result?.statusCode)
     }
 ```
 
 ---
 
-# Download Image
+## Custom Headers
 
-```kotlin
-client.get("/image")
-    .asObject<ByteArray>()
-    .enqueue { result ->
-
-        val bytes = result?.data?.get("data") as ByteArray
-
-        val bitmap = BitmapFactory.decodeByteArray(
-            bytes,
-            0,
-            bytes.size
-        )
-    }
-```
-
----
-
-# Custom Headers
-
-## Global Headers
+### Global Headers
 
 ```kotlin
 val client = NetraClient.Builder(applicationContext)
-    .addHeaders(
-        mapOf(
-            "Authorization" to "Bearer token"
-        )
-    )
+    .baseUrl("https://api.example.com")
+    .addHeaders(mapOf("Authorization" to "Bearer token"))
     .build()
 ```
 
----
-
-## Request Headers
+### Per-Request Headers
 
 ```kotlin
 client.get("/users")
-    .addHeaders(
-        mapOf(
-            "Custom-Header" to "value"
-        )
-    )
+    .addHeaders(mapOf("X-Custom-Header" to "value"))
+    .asObject<Any>()
+    .enqueue { result, exception -> }
 ```
 
 ---
 
-# Converter Support
+## Converter Support
 
-## Kotlinx Serialization
-
-- `GSON`
-- `MOSHI`
-- `KOTLINX`
+| Converter | Class |
+|---|---|
+| Gson | `NetraGsonConverter()` |
+| Kotlinx Serialization | `NetraKotlinxConverter()` |
+| Moshi | `NetraMoshiConverter()` |
 
 ```kotlin
 val client = NetraClient.Builder(applicationContext)
-    .addConverterFactory(
-        NetraKotlinxConverter()
-    )
+    .baseUrl("https://api.example.com")
+    .addConverterFactory(NetraKotlinxConverter())
     .build()
 ```
 
 ---
 
-# Circuit Breaker
+## Circuit Breaker
+
+Automatically stops sending requests after a threshold of consecutive failures.
 
 ```kotlin
 val client = NetraClient.Builder(applicationContext)
-    .circuitBreaker()
+    .baseUrl("https://api.example.com")
+    .circuitBreaker(failureThreshold = 5, retryDelayMs = 1000L)
     .build()
 ```
 
 ---
 
-# Cancel Support When Activity Destroyed
+## Custom Interceptor
 
-```kotlin
-client.get("/users")
-    .cancelWhenDestroyed()
-```
-
----
-
-# Add Global Interceptor
-##### Global interceptors are applied to all requests created by the client.
+Global interceptors are applied to all requests created by the client.
 
 ```kotlin
 val client = NetraClient.Builder(applicationContext)
+    .baseUrl("https://api.example.com")
     .addInterceptor(object : NetraInterceptor {
-
-        override fun intercept(chain: NetraInterceptor.Chain): NetraResponse {
-
+        override fun intercept(chain: NetraInterceptor.NetraChain): NetraResponse<*> {
             val request = chain.request()
-
             println("Request URL: ${request.url}")
-            println("Request Method: ${request.method}")
 
             val modifiedRequest = request.newBuilder()
                 .addHeader("X-App-Version", "1.0.0")
                 .build()
 
             val response = chain.proceed(modifiedRequest)
-
             println("Response Code: ${response.statusCode}")
-
             return response
         }
     })
@@ -421,52 +488,51 @@ val client = NetraClient.Builder(applicationContext)
 
 ---
 
----
+## Cancel Request
 
-# Cancel Request
+### Manual cancel
 
 ```kotlin
-val request = client.get("/users")
-
+val request = client.get("/users").asObject<Any>()
 request.cancel()
 ```
 
----
-
-# Example Response
+### Auto-cancel on Activity destroy
 
 ```kotlin
-result?.statusCode
-result?.statusMessage
-result?.headers
-result?.data
+client.get("/users")
+    .asObject<Any>()
+    .cancelWhenDestroyed()
+    .enqueue { result, exception -> }
 ```
 
 ---
 
-# Roadmap
+## Roadmap
 
 - [ ] WebSocket support
 - [ ] Request deduplication
+- [ ] `executeStream` offline/slow network handling
+
 ---
 
-# Why Netra?
+## Why Netra?
 
 Netra focuses on real-world mobile networking problems:
 
-- unreliable connections
-- offline-first architecture
-- slow networks
-- cache consistency
-- request recovery
-- developer observability
+- Unreliable connections
+- Offline-first architecture
+- Slow networks
+- Cache consistency
+- Request recovery
+- Developer observability
 
 Instead of only being an HTTP client, Netra aims to provide a resilient networking layer for modern Android applications.
 
 ---
 
-# License
+## License
 
-```text
+```
 MIT License
 ```
