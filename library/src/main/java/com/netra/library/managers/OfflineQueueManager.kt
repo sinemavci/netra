@@ -121,7 +121,6 @@ object OfflineQueueManager {
                         )
                     )
                 }
-                dao.deleteRequest(savedReq.id)
             }
         }
     }
