@@ -1,6 +1,5 @@
 package com.netra.library.managers
 
-import android.util.Log
 import com.netra.library.observers.CacheEvent
 import com.netra.library.observers.INetraObserver
 import com.netra.library.observers.NetworkEvent
@@ -14,11 +13,7 @@ internal object ObserverManager {
     fun notifyNetworkEvent(event: NetworkEvent) {
         EventDispatcher.runOnMain {
             observers.toTypedArray().forEach { observer ->
-                try {
-                    observer.onNetworkChanged(event)
-                } catch (e: Exception) {
-                    Log.e("MapRays", "Error in observer: ${e.message}", e)
-                }
+                observer.onNetworkChanged(event)
             }
         }
     }
@@ -26,11 +21,7 @@ internal object ObserverManager {
     fun notifyCacheEvent(event: CacheEvent) {
         EventDispatcher.runOnMain {
             observers.toTypedArray().forEach { observer ->
-                try {
-                    observer.onCacheChanged(event)
-                } catch (e: Exception) {
-                    Log.e("MapRays", "Error in observer: ${e.message}", e)
-                }
+                observer.onCacheChanged(event)
             }
         }
     }
@@ -38,11 +29,7 @@ internal object ObserverManager {
     fun notifyQueuedEvent(event: QueueEvent) {
         EventDispatcher.runOnMain {
             observers.toTypedArray().forEach { observer ->
-                try {
-                    observer.onQueueChanged(event)
-                } catch (e: Exception) {
-                    Log.e("MapRays", "Error in observer: ${e.message}", e)
-                }
+                observer.onQueueChanged(event)
             }
         }
     }
@@ -50,11 +37,7 @@ internal object ObserverManager {
     fun notifyRequestEvent(event: RequestEvent) {
         EventDispatcher.runOnMain {
             observers.toTypedArray().forEach { observer ->
-                try {
-                    observer.onRequestChanged(event)
-                } catch (e: Exception) {
-                    Log.e("MapRays", "Error in observer: ${e.message}", e)
-                }
+                observer.onRequestChanged(event)
             }
         }
     }
