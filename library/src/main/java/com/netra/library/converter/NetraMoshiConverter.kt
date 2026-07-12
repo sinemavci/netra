@@ -1,5 +1,6 @@
 package com.netra.library.converter
 
+import com.netra.library.exceptions.NetraNetworkException
 import com.squareup.moshi.Moshi
 import java.lang.reflect.Type
 
@@ -11,6 +12,6 @@ class NetraMoshiConverter: IConverter {
         val moshi = Moshi.Builder().build()
         val adapter = moshi.adapter<T>(type)
         return adapter.fromJson(bytes.decodeToString())
-            ?: throw Exception("Moshi conversion failed")
+            ?: throw NetraNetworkException("Moshi conversion failed")
     }
 }

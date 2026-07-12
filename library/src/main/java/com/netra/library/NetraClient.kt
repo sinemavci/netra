@@ -4,6 +4,7 @@ import android.content.Context
 import com.netra.library.converter.IConverter
 import com.netra.library.converter.NetraGsonConverter
 import com.netra.library.enums.Command
+import com.netra.library.exceptions.NetraNetworkException
 import com.netra.library.interceptors.BaseInterceptor
 import com.netra.library.interceptors.CircuitBreakerInterceptor
 import com.netra.library.interceptors.NetraInterceptor
@@ -100,7 +101,7 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
                 val config = NetraClientConfig(context, client, baseUrl!!, converter, headers)
                 return NetraClient(config)
             } else {
-                throw Exception("Base url not found!")
+                throw NetraNetworkException(message = "Base url not found!")
             }
         }
     }
