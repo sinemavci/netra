@@ -82,14 +82,12 @@ class NetraRequest<T> @PublishedApi internal constructor(
     }
 
     fun addObserver(observer: INetraObserver): NetraRequest<T> {
-        if (observer !in ObserverManager.observers) {
-            ObserverManager.observers.add(observer)
-        }
+        ObserverManager.addObserver(observer)
         return this
     }
 
     fun removeObserver(observer: INetraObserver): NetraRequest<T> {
-        ObserverManager.observers.remove(observer)
+        ObserverManager.removeObserver(observer)
         return this
     }
 

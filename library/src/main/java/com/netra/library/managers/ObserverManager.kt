@@ -10,6 +10,16 @@ import com.netra.library.utils.EventDispatcher
 internal object ObserverManager {
     val observers = mutableListOf<INetraObserver>()
 
+    fun addObserver(observer: INetraObserver) {
+        if (observer !in observers) {
+            observers.add(observer)
+        }
+    }
+
+    fun removeObserver(observer: INetraObserver) {
+        observers.remove(observer)
+    }
+
     fun notifyNetworkEvent(event: NetworkEvent) {
         EventDispatcher.runOnMain {
             observers.toTypedArray().forEach { observer ->

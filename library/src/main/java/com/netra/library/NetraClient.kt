@@ -25,13 +25,11 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
     var pendingRequests: List<Pair<String, NetraCall>> = CancelRequestManager.getAllRequests()
 
     fun addObserver(observer: INetraObserver) {
-        if (observer !in ObserverManager.observers) {
-            ObserverManager.observers.add(observer)
-        }
+        ObserverManager.addObserver(observer)
     }
 
     fun removeObserver(observer: INetraObserver) {
-        ObserverManager.observers.remove(observer)
+        ObserverManager.removeObserver(observer)
     }
 
     data class Builder(
