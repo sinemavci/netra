@@ -15,6 +15,19 @@ internal class NetraConnectivityManager private constructor(
 ) {
     var connectivityManager = context.applicationContext
         .getSystemService(ConnectivityManager::class.java)
+    val networkRequest = NetworkRequest.Builder()
+        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+        .build()
+
+    val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            ObserverManager.notifyNetworkEvent(NetworkEvent.ConnectionRestored)
+            OfflineQueueManager.processQueue()
+            super.onAvailable(network)
+        }
+    }
 
     @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
     fun isConnected(): Boolean {
@@ -45,20 +58,6 @@ internal class NetraConnectivityManager private constructor(
     }
 
     fun init() {
-        val networkRequest = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-            .build()
-
-        val networkCallback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                ObserverManager.notifyNetworkEvent(NetworkEvent.ConnectionRestored)
-                OfflineQueueManager.processQueue()
-                super.onAvailable(network)
-            }
-        }
-
         connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
     }
 
