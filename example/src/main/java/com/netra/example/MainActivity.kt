@@ -390,14 +390,14 @@ class MainActivity : ComponentActivity() {
                 }
             })
 
-        try {
             CoroutineScope(Dispatchers.IO).launch {
-                val result = request.execute()
-                Log.e("", " execute: ${result.statusCode} ${result.data}")
+                try {
+                    val result = request.execute()
+                    Log.e("", " execute: ${result.statusCode} ${result.data}")
+                } catch (e: NetraException) {
+                    Log.e("", "error execute: ${e.message}")
+                }
             }
-        } catch (e: NetraException) {
-            Log.e("", "error execute: ${e.message}")
-        }
 //
 //        try {
 //            request.enqueue { result, exception ->
