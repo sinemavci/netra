@@ -73,7 +73,7 @@ object OfflineQueueManager {
     fun processQueue() {
         val gson = Gson()
         scope.launch {
-            //todo: check call is cancelled before?, converted is not enable, and enqueue not exist
+            //todo: check call is cancelled before?, and enqueue not exist
             if (dao.getAllRequests().isEmpty()) {
                 return@launch
             }
