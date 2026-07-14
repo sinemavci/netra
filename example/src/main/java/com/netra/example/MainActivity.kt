@@ -27,7 +27,6 @@ import com.netra.library.observers.INetraObserver
 import com.netra.library.NetraClient
 import com.netra.library.NetraPart
 import com.netra.library.NetraRequestBody
-import com.netra.library.converter.NetraGsonConverter
 import com.netra.library.observers.NetworkEvent
 import com.netra.library.observers.RequestEvent
 import com.netra.library.enums.OfflinePolicyAction
@@ -142,7 +141,7 @@ class MainActivity : ComponentActivity() {
 
     fun handleGet() {
         val client = NetraClient.Builder(applicationContext)
-            .addConverterFactory(NetraGsonConverter())
+            //.addConverterFactory(NetraGsonConverter())
             .baseUrl("http://10.0.2.2:3001").build()
 
         val request = client.get("/?status=200&delay=2000")
@@ -286,7 +285,7 @@ class MainActivity : ComponentActivity() {
 //            .withCache(Cache())
             .cancelWhenDestroyed()
             .whenSlowNetwork(SlowNetworkPolicyAction.WAIT(3.seconds))
-            .whenOffline(OfflinePolicyAction.USE_CACHE)
+            .whenOffline(OfflinePolicyAction.QUEUE)
             .addObserver(object : INetraObserver {
                 override fun onNetworkChanged(event: NetworkEvent) {
                     Log.e(
@@ -530,7 +529,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         client = NetraClient.Builder(applicationContext)
-            .addConverterFactory(NetraGsonConverter())
+            .addConverterFactory(NetraKotlinxConverter())
             //.baseUrl("http://10.0.2.2:3001")
             .baseUrl("https://api.github.com")
             .circuitBreaker()

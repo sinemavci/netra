@@ -9,6 +9,8 @@ data class PersistentRequest(
     val url: String,
     val method: String,
     val body: String?,
-    val headersJson: String, // Room cannot store Maps directly, so we store a JSON string
-    val timestamp: Long = System.currentTimeMillis()
+    val headersJson: String,
+    val converter: String?,
+    val timestamp: Long = System.currentTimeMillis(),
+
 )

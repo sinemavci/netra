@@ -3,6 +3,12 @@ package com.netra.library.managers
 import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.netra.library.NetraCall
+import com.netra.library.NetraResponse
+import com.netra.library.converter.IConverter
+import com.netra.library.converter.NetraGsonConverter
+import com.netra.library.converter.NetraKotlinxConverter
+import com.netra.library.converter.NetraMoshiConverter
 import com.netra.library.observers.QueueEvent
 import com.netra.library.database.NetraDatabase
 import com.netra.library.database.PersistentRequest
@@ -28,9 +34,16 @@ object OfflineQueueManager {
         dao = NetraDatabase.getDatabase(context).queueDao()
     }
 
-    fun push(request: Request) {
+    fun push(netraCall: NetraCall) {
         val jsonConverter = Gson()
         scope.launch {
+            val request = netraCall.call.request()
+            val converterStr = when (netraCall.converter) {
+                is NetraGsonConverter -> "GSON"
+                is NetraMoshiConverter -> "MOSHI"
+                is NetraKotlinxConverter -> "KOTLINX"
+                else -> null
+            }
             dao.insertRequest(
                 PersistentRequest(
                     id = UUID.randomUUID().toString(),
@@ -38,6 +51,7 @@ object OfflineQueueManager {
                     method = request.method,
                     body = jsonConverter.toJson(request.body),
                     headersJson = jsonConverter.toJson(request.headers.toMultimap()),
+                    converterStr,
                 )
             )
             ObserverManager.notifyQueuedEvent(
@@ -74,6 +88,24 @@ object OfflineQueueManager {
                     values.forEach { value -> headerBuilder.add(key, value) }
                 }
 
+                val converter: IConverter? = when (savedReq.converter) {
+                    "GSON" -> {
+                        NetraGsonConverter()
+                    }
+
+                    "MOSHI" -> {
+                        NetraMoshiConverter()
+                    }
+
+                    "KOTLINX" -> {
+                        NetraKotlinxConverter()
+                    }
+
+                    else -> {
+                        null
+                    }
+                }
+
                 val body = when (savedReq.method) {
                     "GET" -> null
                     else -> savedReq.body?.toRequestBody(null)
@@ -91,9 +123,29 @@ object OfflineQueueManager {
                 )
 
                 try {
-                    val response = client.newCall(request).execute()
-                    val netraResponse = ResponseUtil.okHttpResponseToNetra(response, null)
-                    if (response.isSuccessful) {
+                    val okHttpResponse = client.newCall(request).execute()
+                    val byteArray = okHttpResponse.body?.bytes()
+                    val convertedResponse = try {
+                        if (byteArray != null) {
+                            converter?.convert<Any>(byteArray, Any::class.java) ?: byteArray
+                        } else {
+                            null
+                        }
+                    } catch (e: java.io.IOException) {
+                        null
+                    }
+
+                    val netraResponse = NetraResponse(
+                        data = convertedResponse,
+                        statusCode = okHttpResponse.code,
+                        statusMessage = okHttpResponse.message,
+                        isCache = false,
+                        headers = okHttpResponse.headers.toMap()
+                    )
+
+
+
+                    if (okHttpResponse.isSuccessful) {
                         dao.deleteRequest(savedReq.id)
 
                         ObserverManager.notifyQueuedEvent(
@@ -111,7 +163,7 @@ object OfflineQueueManager {
                             )
                         )
                     }
-                    response.close()
+                    okHttpResponse.close()
                 } catch (e: IOException) {
                     ObserverManager.notifyQueuedEvent(
                         QueueEvent.QueuedRequestFailed(
