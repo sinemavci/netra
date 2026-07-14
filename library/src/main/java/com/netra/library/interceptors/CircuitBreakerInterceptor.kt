@@ -1,7 +1,5 @@
 package com.netra.library.interceptors
 
-import android.util.Log
-import com.netra.library.NetraClient
 import com.netra.library.NetraRequest
 import com.netra.library.managers.ObserverManager
 import com.netra.library.observers.RequestEvent
@@ -49,7 +47,6 @@ class CircuitBreakerInterceptor(failureThreshold: Int? = 5, val retryDelayMs: Lo
 
         var attempt = 1
         var response: Response = currentChain.proceed(request)
-        Log.e("response", "response in interceptor: ${response.code}")
 
         while (!response.isSuccessful && shouldRetry(response) && attempt < maxRetries && !chain.call()
                 .isCanceled()

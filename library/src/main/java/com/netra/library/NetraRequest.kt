@@ -3,7 +3,6 @@ package com.netra.library
 import android.Manifest
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import androidx.annotation.RequiresPermission
 import com.google.gson.Gson
 import com.netra.library.enums.Command
@@ -157,7 +156,6 @@ class NetraRequest<T> @PublishedApi internal constructor(
     private fun getRequestBody(netraRequestBody: NetraRequestBody): RequestBody {
         val mediaType = netraRequestBody.contentType.toMediaTypeOrNull()
         if (!netraRequestBody.isMultipart) {
-            Log.e("", "multipart not heree")
             return when (val content = netraRequestBody.content) {
                 is String -> content.toRequestBody(mediaType)
                 is ByteArray -> content.toRequestBody(mediaType)
@@ -169,7 +167,6 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 else -> "".toRequestBody(null)
             }
         } else {
-            Log.e("", "multipart hereee")
             val builder = okhttp3.MultipartBody.Builder().setType(okhttp3.MultipartBody.FORM)
             val parts = netraRequestBody.content as List<NetraPart>
 
