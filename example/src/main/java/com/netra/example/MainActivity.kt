@@ -3,6 +3,7 @@ package com.netra.example
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -12,6 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Button
@@ -59,7 +61,8 @@ data class Repo(
 class MainActivity : ComponentActivity() {
     var _bitmap = mutableStateOf<Bitmap?>(null)
 
-    private lateinit var client: NetraClient
+    private lateinit var client1: NetraClient
+    private lateinit var client2: NetraClient
 
     val pickImage = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -139,13 +142,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun handleGet() {
-        val client = NetraClient.Builder(applicationContext)
-            //.addConverterFactory(NetraGsonConverter())
-            .baseUrl("http://10.0.2.2:3001").build()
-
-        val request = client.get("/?status=200&delay=2000")
-            .slowMode()
+        val request = client2.get("/?status=200&delay=2000")
             .addHeaders(mapOf("headercustom2" to "custom"))
             .asObject<Any>()
 //            .withCache(Cache())
@@ -155,7 +154,7 @@ class MainActivity : ComponentActivity() {
             .addObserver(object : INetraObserver {
                 override fun onNetworkChanged(event: NetworkEvent) {
                     Log.e(
-                        "",
+                        "client 2",
                         "request NetworkEvent observer here: ${event}}"
                     )
                 }
@@ -164,7 +163,7 @@ class MainActivity : ComponentActivity() {
                     when (event) {
                         is CacheEvent.StaleCacheUsed -> {
                             Log.e(
-                                "",
+                                "client 2",
                                 "StaleCacheUsed: ${event.request.command.url} ${event.ageMs} ${event.expiredByMs}}"
                             )
                         }
@@ -203,19 +202,19 @@ class MainActivity : ComponentActivity() {
                     when (event) {
                         is RequestEvent.RequestExecuted -> {
                             Log.e(
-                                "",
+                                "client 2",
                                 "RequestExecuted: ${event.request.command.url} "
                             )
                         }
                         is RequestEvent.RequestSuccess -> {
                             Log.e(
-                                "",
+                                "client 2",
                                 "RequestSuccess: ${event.request.command.url} response: ${event.response.statusCode} ${event.response.data}"
                             )
                         }
                         is RequestEvent.RequestFailed -> {
                             Log.e(
-                                "",
+                                "client 2",
                                 "RequestFailed: ${event.request.command.url} response: ${event.response?.statusCode} ${event.response?.data}"
                             )
                         }
@@ -278,7 +277,7 @@ class MainActivity : ComponentActivity() {
 //            )
 //            .build()
 
-        val request = client.get("/users/octocat/repos")
+        val request = client1.get("/users/octocat/repos")
             .slowMode()
             .addHeaders(mapOf("headercustom2" to "custom"))
             .asList<Repo>()
@@ -337,19 +336,19 @@ class MainActivity : ComponentActivity() {
                     when (event) {
                         is RequestEvent.RequestExecuted -> {
                             Log.e(
-                                "",
+                                "client 1",
                                 "RequestExecuted: ${event.request.command.url} "
                             )
                         }
                         is RequestEvent.RequestSuccess -> {
                             Log.e(
-                                "",
+                                "client 1",
                                 "RequestSuccess: ${event.request.command.url} response: ${event.response.statusCode} ${event.response.data}"
                             )
                         }
                         is RequestEvent.RequestFailed -> {
                             Log.e(
-                                "",
+                                "client 1",
                                 "RequestFailed: ${event.request.command.url} response: ${event.response?.statusCode} ${event.response?.data}"
                             )
                         }
@@ -526,9 +525,10 @@ class MainActivity : ComponentActivity() {
             }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        client = NetraClient.Builder(applicationContext)
+        client1 = NetraClient.Builder(applicationContext)
             .addConverterFactory(NetraKotlinxConverter())
             //.baseUrl("http://10.0.2.2:3001")
             .baseUrl("https://api.github.com")
@@ -563,6 +563,9 @@ class MainActivity : ComponentActivity() {
 //
 //            })
             .build()
+
+        client2 = NetraClient.Builder(applicationContext)
+            .baseUrl("http://10.0.2.2:3001").build()
         enableEdgeToEdge()
         setContent {
             NetraTheme {

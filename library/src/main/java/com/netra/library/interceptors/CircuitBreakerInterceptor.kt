@@ -22,6 +22,7 @@ class CircuitBreakerInterceptor(failureThreshold: Int? = 5, val retryDelayMs: Lo
         val netraRequest = request.tag(NetraRequest::class.java)
         if (netraRequest != null) {
             ObserverManager.notifyRequestEvent(
+                netraRequest.config.id,
                 RequestEvent.RequestExecuted(
                     request = netraRequest
                 )

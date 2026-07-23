@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 @PublishedApi
 internal class NetraClientConfig(
+    val id: String,
     val context: Context,
     val client: OkHttpClient,
     val baseUrl: String,

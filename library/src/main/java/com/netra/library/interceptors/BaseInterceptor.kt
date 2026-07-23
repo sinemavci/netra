@@ -13,6 +13,7 @@ class BaseInterceptor : Interceptor {
         val netraRequest = request.tag(NetraRequest::class.java)
         if (netraRequest != null) {
             ObserverManager.notifyRequestEvent(
+                netraRequest.config.id,
                 RequestEvent.RequestExecuted(
                     request = netraRequest
                 )

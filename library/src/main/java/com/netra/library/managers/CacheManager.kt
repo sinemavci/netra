@@ -67,6 +67,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
 
                 val age = getCacheAgeByMs(cacheFile)
                 ObserverManager.notifyCacheEvent(
+                    request.config.id,
                     CacheEvent.CacheStored(request, age, byteArray.size)
                 )
             } catch (e: Exception) {
@@ -84,7 +85,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
         if (memEntry != null) {
             val memAgeMs = now - memEntry.timestamp
             if (memAgeMs < ttl) {
-                ObserverManager.notifyCacheEvent(CacheEvent.CacheHit(request, ttl, memAgeMs))
+                ObserverManager.notifyCacheEvent(request.config.id,CacheEvent.CacheHit(request, ttl, memAgeMs))
                 val convertedResponse = request.handleConvertedResponse(memEntry.data)
                 return NetraResponse(
                     data = convertedResponse,
@@ -97,7 +98,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
 
         val cacheFile = File(context.cacheDir, cacheKey)
         if (!cacheFile.exists()) {
-            ObserverManager.notifyCacheEvent(CacheEvent.CacheMiss(request))
+            ObserverManager.notifyCacheEvent(request.config.id,CacheEvent.CacheMiss(request))
             return null
         }
 
@@ -107,12 +108,13 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
 
         val result = when {
             !isExpired -> {
-                ObserverManager.notifyCacheEvent(CacheEvent.CacheHit(request, ttl, ageMs))
+                ObserverManager.notifyCacheEvent(request.config.id,CacheEvent.CacheHit(request, ttl, ageMs))
                 cacheBytes
             }
 
             allowExpired -> {
                 ObserverManager.notifyCacheEvent(
+                    request.config.id,
                     CacheEvent.StaleCacheUsed(request, ttl, ageMs, ageMs - ttl)
                 )
                 cacheBytes
@@ -120,6 +122,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
 
             else -> {
                 ObserverManager.notifyCacheEvent(
+                    request.config.id,
                     CacheEvent.CacheExpired(request, ttl, ageMs, ageMs - ttl)
                 )
                 null

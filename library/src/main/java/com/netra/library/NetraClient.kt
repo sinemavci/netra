@@ -20,12 +20,12 @@ import okhttp3.Response
 import java.util.UUID
 
 class NetraClient private constructor(internal val config: NetraClientConfig) {
-    var id: String = UUID.randomUUID().mostSignificantBits.toString()
+    var id: String = config.id
 
     var pendingRequests: List<Pair<String, NetraCall>> = CancelRequestManager.getAllRequests()
 
     fun addObserver(observer: INetraObserver) {
-        ObserverManager.addObserver(observer)
+        ObserverManager.addObserver(config.id, observer)
     }
 
     fun removeObserver(observer: INetraObserver) {
@@ -40,6 +40,8 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
         var converter: IConverter? = NetraGsonConverter(),
         var headers: MutableMap<String, String> = mutableMapOf(),
     ) {
+        private val id: String = UUID.randomUUID().mostSignificantBits.toString()
+
         fun baseUrl(url: String): Builder {
             this.baseUrl = url
             return this
@@ -52,6 +54,7 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
                     val netraRequest = okHttpRequest.tag(NetraRequest::class.java)
                     if (netraRequest != null) {
                         ObserverManager.notifyRequestEvent(
+                            id,
                             RequestEvent.RequestExecuted(
                                 request = netraRequest
                             )
@@ -96,7 +99,7 @@ class NetraClient private constructor(internal val config: NetraClientConfig) {
 
         fun build(): NetraClient {
             if (baseUrl != null) {
-                val config = NetraClientConfig(context, client, baseUrl!!, converter, headers)
+                val config = NetraClientConfig(id, context, client, baseUrl!!, converter, headers)
                 return NetraClient(config)
             } else {
                 throw NetraNetworkException(message = "Base url not found!")

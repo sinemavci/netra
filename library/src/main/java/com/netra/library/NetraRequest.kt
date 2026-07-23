@@ -81,7 +81,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
     }
 
     fun addObserver(observer: INetraObserver): NetraRequest<T> {
-        ObserverManager.addObserver(observer)
+        ObserverManager.addObserver(config.id, observer)
         return this
     }
 
@@ -106,6 +106,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
         CancelRequestManager.remove(id)
         callback(null, ResponseUtil.mapException(e))
         ObserverManager.notifyRequestEvent(
+            config.id,
             RequestEvent.RequestFailed(
                 request = this,
                 response = null,
@@ -125,6 +126,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
             if (response.isSuccessful) {
                 cacheManager.writeCacheResponse(_response as NetraResponse<*>?)
                 ObserverManager.notifyRequestEvent(
+                    config.id,
                     RequestEvent.RequestSuccess(
                         request = this,
                         response = _response,
@@ -132,6 +134,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 )
             } else {
                 ObserverManager.notifyRequestEvent(
+                    config.id,
                     RequestEvent.RequestFailed(
                         request = this,
                         response = _response,
@@ -142,6 +145,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
         } catch (e: Exception) {
             callback(null, ResponseUtil.mapException(e))
             ObserverManager.notifyRequestEvent(
+                config.id,
                 RequestEvent.RequestFailed(
                     request = this,
                     response = null,
@@ -257,6 +261,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 if (response.isSuccessful) {
                     cacheManager.writeCacheResponse(netraResponse)
                     ObserverManager.notifyRequestEvent(
+                        config.id,
                         RequestEvent.RequestSuccess(
                             request = request,
                             response = netraResponse,
@@ -264,6 +269,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                     )
                 } else {
                     ObserverManager.notifyRequestEvent(
+                        config.id,
                         RequestEvent.RequestFailed(
                             request = request,
                             response = netraResponse,
@@ -498,6 +504,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                             if (response.isSuccessful) {
                                 cacheManager.writeCacheResponse(netraResponse)
                                 ObserverManager.notifyRequestEvent(
+                                    config.id,
                                     RequestEvent.RequestSuccess(
                                         request = this,
                                         response = netraResponse,
@@ -505,6 +512,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                                 )
                             } else {
                                 ObserverManager.notifyRequestEvent(
+                                    config.id,
                                     RequestEvent.RequestFailed(
                                         request = this,
                                         response = netraResponse,
@@ -581,6 +589,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                         if (cacheResponse != null) {
                             callback(cacheResponse, null)
                             ObserverManager.notifyRequestEvent(
+                                config.id,
                                 RequestEvent.RequestSuccess(
                                     request = this,
                                     response = cacheResponse,
@@ -646,6 +655,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                     if (cacheResponse != null) {
                         callback(cacheResponse, null)
                         ObserverManager.notifyRequestEvent(
+                            config.id,
                             RequestEvent.RequestSuccess(
                                 request = this,
                                 response = cacheResponse,
