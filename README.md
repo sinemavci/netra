@@ -32,6 +32,16 @@ Netra initializes automatically via `ContentProvider` — no `Application` class
 
 ---
 
+### Installation
+
+```bash
+dependencies {
+    implementation 'com.netra:netra:1.0.0'
+}
+```
+
+---
+
 ## Basic Usage
 
 ### Create Client
