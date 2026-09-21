@@ -49,7 +49,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
     private var slowNetworkPolicyAction: SlowNetworkPolicyAction? = null
     private var retriesCount: Int? = null
     private var connectivityManager = NetraConnectivityManager.getInstance(config.context)
-    private var isCancelWhenDestroyed = false;
+    private var isCancelWhenDestroyed = false
 
     fun withCache(cache: Cache): NetraRequest<T> {
         if (this.command is Command.Get) {
@@ -121,10 +121,10 @@ class NetraRequest<T> @PublishedApi internal constructor(
     ) {
         CancelRequestManager.remove(id)
         try {
-            val _response = ResponseUtil.okHttpResponseToNetra(response, this) as NetraResponse<T>
+            val _response = ResponseUtil.okHttpResponseToNetra(response, this)
             callback(_response, null)
             if (response.isSuccessful) {
-                cacheManager.writeCacheResponse(_response as NetraResponse<*>?)
+                cacheManager.writeCacheResponse(_response)
                 ObserverManager.notifyRequestEvent(
                     config.id,
                     RequestEvent.RequestSuccess(
@@ -256,7 +256,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
             try {
                 val response = netraCall.call.execute()
                 val netraResponse =
-                    ResponseUtil.okHttpResponseToNetra(response, request) as NetraResponse<T>
+                    ResponseUtil.okHttpResponseToNetra(response, request)
 
                 if (response.isSuccessful) {
                     cacheManager.writeCacheResponse(netraResponse)
@@ -445,7 +445,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 when (slowNetworkPolicyAction) {
                     is SlowNetworkPolicyAction.USE_CACHE -> {
                         val _response =
-                            cacheManager.getCache(allowExpired = true) as NetraResponse<T>?
+                            cacheManager.getCache<T>(allowExpired = true)
                         netraResponse = _response ?: executeCommand(netraCall)
                     }
 
@@ -478,8 +478,8 @@ class NetraRequest<T> @PublishedApi internal constructor(
         } else {
             when (offlinePolicyAction) {
                 is OfflinePolicyAction.QUEUE -> {
-                    OfflineQueueManager.push(netraCall)
-                    throw ResponseUtil.mapException(Exception("Request queued for later execution"))
+                    val order = OfflineQueueManager.push(netraCall)
+                    netraResponse = NetraResponse.ResponseQueued(order)
                 }
 
                 is OfflinePolicyAction.RETRY -> {
@@ -500,7 +500,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                                 ResponseUtil.okHttpResponseToNetra(
                                     response,
                                     request
-                                ) as NetraResponse<T>
+                                )
                             if (response.isSuccessful) {
                                 cacheManager.writeCacheResponse(netraResponse)
                                 ObserverManager.notifyRequestEvent(
@@ -538,7 +538,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 }
 
                 is OfflinePolicyAction.USE_CACHE -> {
-                    netraResponse = cacheManager.getCache(allowExpired = true) as NetraResponse<T>?
+                    netraResponse = cacheManager.getCache(allowExpired = true)
                         ?: executeCommand(netraCall)
                 }
 
@@ -585,7 +585,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
                 when (slowNetworkPolicyAction) {
                     is SlowNetworkPolicyAction.USE_CACHE -> {
                         val cacheResponse =
-                            cacheManager.getCache(allowExpired = true) as NetraResponse<T>?
+                            cacheManager.getCache<T>(allowExpired = true)
                         if (cacheResponse != null) {
                             callback(cacheResponse, null)
                             ObserverManager.notifyRequestEvent(
@@ -628,7 +628,8 @@ class NetraRequest<T> @PublishedApi internal constructor(
         } else {
             when (offlinePolicyAction) {
                 is OfflinePolicyAction.QUEUE -> {
-                    OfflineQueueManager.push(call)
+                    val order = OfflineQueueManager.push(call)
+                    callback(NetraResponse.ResponseQueued(order), null)
                 }
 
                 is OfflinePolicyAction.RETRY -> {
@@ -651,7 +652,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
 
                 is OfflinePolicyAction.USE_CACHE -> {
                     val cacheResponse =
-                        cacheManager.getCache(allowExpired = true) as NetraResponse<T>?
+                        cacheManager.getCache<T>(allowExpired = true)
                     if (cacheResponse != null) {
                         callback(cacheResponse, null)
                         ObserverManager.notifyRequestEvent(

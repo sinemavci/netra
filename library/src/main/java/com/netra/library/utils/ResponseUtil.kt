@@ -21,7 +21,7 @@ import javax.net.ssl.SSLException
 import javax.net.ssl.SSLKeyException
 
 internal object ResponseUtil {
-    fun okHttpResponseToNetra(response: okhttp3.Response, request: NetraRequest<*>?): NetraResponse<*> {
+    fun <T> okHttpResponseToNetra(response: okhttp3.Response, request: NetraRequest<T>?): NetraResponse.ResponseReceived<T> {
         val byteArray = response.body?.bytes()
         val convertedResponse = try {
                 if (byteArray != null) {
@@ -37,8 +37,8 @@ internal object ResponseUtil {
             null
         }
 
-        return NetraResponse(
-            data = convertedResponse,
+        return NetraResponse.ResponseReceived(
+            data = convertedResponse as T?,
             statusCode = response.code,
             statusMessage = response.message,
             isCache = false,
@@ -47,7 +47,7 @@ internal object ResponseUtil {
     }
 
     fun netraResponseToOkHttp(
-        netraResponse: NetraResponse<*>,
+        netraResponse: NetraResponse.ResponseReceived<*>,
         request: okhttp3.Request
     ): okhttp3.Response {
         val jsonString = com.google.gson.Gson().toJson(netraResponse.data)

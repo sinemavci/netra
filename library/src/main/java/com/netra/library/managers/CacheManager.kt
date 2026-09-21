@@ -49,7 +49,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
         return (now - lastModified)
     }
 
-    fun writeCacheResponse(response: NetraResponse<*>?) {
+    fun writeCacheResponse(response: NetraResponse.ResponseReceived<*>?) {
         cache?.let {
             val cacheKey = getCacheKey()
             val now = System.currentTimeMillis()
@@ -76,7 +76,7 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
         }
     }
 
-    fun getCache(allowExpired: Boolean): NetraResponse<*>? {
+    fun <T> getCache(allowExpired: Boolean): NetraResponse.ResponseReceived<T>? {
         val cacheKey = getCacheKey()
         val ttl = cache?.ttl ?: Cache.TTL_DEFAULT
         val now = System.currentTimeMillis()
@@ -87,8 +87,8 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
             if (memAgeMs < ttl) {
                 ObserverManager.notifyCacheEvent(request.config.id,CacheEvent.CacheHit(request, ttl, memAgeMs))
                 val convertedResponse = request.handleConvertedResponse(memEntry.data)
-                return NetraResponse(
-                    data = convertedResponse,
+                return NetraResponse.ResponseReceived(
+                    data = convertedResponse as T?,
                     statusCode = 200,
                     statusMessage = null,
                     isCache = true,
@@ -130,8 +130,8 @@ internal class CacheManager(val context: Context, val request: NetraRequest<*>) 
         }
         if (result != null) {
             val convertedResponse = request.handleConvertedResponse(result)
-            return NetraResponse(
-                data = convertedResponse,
+            return NetraResponse.ResponseReceived(
+                data = convertedResponse as T?,
                 statusCode = 200,
                 statusMessage = null,
                 isCache = true,

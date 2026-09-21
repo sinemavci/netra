@@ -29,6 +29,7 @@ import com.netra.library.observers.INetraObserver
 import com.netra.library.NetraClient
 import com.netra.library.NetraPart
 import com.netra.library.NetraRequestBody
+import com.netra.library.NetraResponse
 import com.netra.library.observers.NetworkEvent
 import com.netra.library.observers.RequestEvent
 import com.netra.library.enums.OfflinePolicyAction
@@ -69,11 +70,13 @@ class MainActivity : ComponentActivity() {
     ) { uri: Uri? ->
         uri?.let {
             val byteArray = uriToByteArray(it)
-            if(byteArray != null) {
+            if (byteArray != null) {
                 val netraPart = NetraPart.file("image", "exampleImage", byteArray, "image/jpeg")
-                val body = NetraRequestBody.multipart(listOf(
-                    netraPart
-                ))
+                val body = NetraRequestBody.multipart(
+                    listOf(
+                        netraPart
+                    )
+                )
 
                 val client = NetraClient.Builder(applicationContext)
                     .baseUrl("http://10.0.2.2:3001")
@@ -84,12 +87,17 @@ class MainActivity : ComponentActivity() {
                     .whenOffline(OfflinePolicyAction.THROW_ERROR)
                     .whenSlowNetwork(SlowNetworkPolicyAction.USE_CACHE)
                     .enqueue { result, exception ->
-                        Log.e("result", result?.statusCode.toString() )
-                        Log.e("exception", exception?.message.toString())
+                        if (result is NetraResponse.ResponseReceived<*>) {
+                            Log.e("result", result.statusCode.toString())
+                            Log.e("exception", exception?.message.toString())
+                        } else {
+                            Log.e("", "response queued")
+                        }
                     }
             }
         }
     }
+
     fun handleGetImage() {
         val client = NetraClient.Builder(applicationContext)
             .baseUrl("http://10.0.2.2:3001")
@@ -150,7 +158,7 @@ class MainActivity : ComponentActivity() {
 //            .withCache(Cache())
             .cancelWhenDestroyed()
             .whenSlowNetwork(SlowNetworkPolicyAction.TIMEOUT(2000.milliseconds))
-            .whenOffline(OfflinePolicyAction.QUEUE)
+            .whenOffline(OfflinePolicyAction.USE_CACHE)
             .addObserver(object : INetraObserver {
                 override fun onNetworkChanged(event: NetworkEvent) {
                     Log.e(
@@ -206,12 +214,14 @@ class MainActivity : ComponentActivity() {
                                 "RequestExecuted: ${event.request.command.url} "
                             )
                         }
+
                         is RequestEvent.RequestSuccess -> {
                             Log.e(
                                 "client 2",
                                 "RequestSuccess: ${event.request.command.url} response: ${event.response.statusCode} ${event.response.data}"
                             )
                         }
+
                         is RequestEvent.RequestFailed -> {
                             Log.e(
                                 "client 2",
@@ -222,7 +232,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 override fun onQueueChanged(event: QueueEvent) {
-                    when(event) {
+                    when (event) {
                         is QueueEvent.RequestQueued -> {
                             Log.e(
                                 "",
@@ -256,17 +266,23 @@ class MainActivity : ComponentActivity() {
 
         try {
             request.enqueue { result, exception ->
-                Log.e(
-                    "result is success",
-                    "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
-                )
-                Log.e("", "exeption: ${exception?.message} --- ${exception?.cause}")
+                if (result is NetraResponse.ResponseReceived<*>) {
+                    Log.e(
+                        "result is success",
+                        "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
+                    )
+                    Log.e("", "exeption: ${exception?.message} --- ${exception?.cause}")
+                } else {
+                    Log.e("", "response queued")
+                }
+
             }
         } catch (e: NetraException) {
             Log.e("", "error execute: ${e.message}")
         }
 
     }
+
     fun handleGet1() {
 //        val client = NetraClient.Builder(applicationContext)
 //            .baseUrl("http://10.0.2.2:3001")
@@ -340,12 +356,14 @@ class MainActivity : ComponentActivity() {
                                 "RequestExecuted: ${event.request.command.url} "
                             )
                         }
+
                         is RequestEvent.RequestSuccess -> {
                             Log.e(
                                 "client 1",
                                 "RequestSuccess: ${event.request.command.url} response: ${event.response.statusCode} ${event.response.data}"
                             )
                         }
+
                         is RequestEvent.RequestFailed -> {
                             Log.e(
                                 "client 1",
@@ -356,7 +374,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 override fun onQueueChanged(event: QueueEvent) {
-                    when(event) {
+                    when (event) {
                         is QueueEvent.RequestQueued -> {
                             Log.e(
                                 "",
@@ -388,14 +406,18 @@ class MainActivity : ComponentActivity() {
                 }
             })
 
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    val result = request.execute()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val result = request.execute()
+                if (result is NetraResponse.ResponseReceived<*>) {
                     Log.e("", " execute: ${result.statusCode} ${result.data}")
-                } catch (e: NetraException) {
-                    Log.e("", "error execute: ${e.message}")
+                } else {
+                    Log.e("", "execute response queued")
                 }
+            } catch (e: NetraException) {
+                Log.e("", "error execute: ${e.message}")
             }
+        }
 //
 //        try {
 //            request.enqueue { result, exception ->
@@ -410,8 +432,8 @@ class MainActivity : ComponentActivity() {
 //        }
 
         Handler(Looper.getMainLooper()).postDelayed({
-         //   Log.e("", "cancelled")
-           // request.cancel()
+            //   Log.e("", "cancelled")
+            // request.cancel()
         }, (2000))
     }
 
@@ -437,10 +459,14 @@ class MainActivity : ComponentActivity() {
         try {
             CoroutineScope(Dispatchers.IO).launch {
                 val response = call.execute()
-                Log.e(
-                    "response in main kt",
-                    "${response.statusCode} ${response.data} message: ${response.statusMessage} "
-                )
+                if (response is NetraResponse.ResponseReceived<*>) {
+                    Log.e(
+                        "response in main kt",
+                        "${response.statusCode} ${response.data} message: ${response.statusMessage} "
+                    )
+                } else {
+                    Log.e("", "execute response queued")
+                }
             }
         } catch (e: NetraException) {
             Log.e("", "error execute: ${e.message}")
@@ -471,12 +497,17 @@ class MainActivity : ComponentActivity() {
             .asObject<Any>()
             .withCache(Cache())
             .enqueue { result, exception ->
-            Log.e(
-                "result is success",
-                "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
-            )
-            Log.e("", "exeption: ${exception?.message}")
-        }
+                if (result is NetraResponse.ResponseReceived<*>) {
+                    Log.e(
+                        "result is success",
+                        "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
+                    )
+                    Log.e("", "exeption: ${exception?.message}")
+                } else {
+                    Log.e("", "response queued")
+                }
+
+            }
     }
 
     fun handlePatch() {
@@ -497,11 +528,15 @@ class MainActivity : ComponentActivity() {
             .asObject<Any>()
             .withCache(Cache())
             .enqueue { result, exception ->
-                Log.e(
-                    "result is success",
-                    "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
-                )
-                Log.e("", "exeption: ${exception?.message}")
+                if (result is NetraResponse.ResponseReceived<*>) {
+                    Log.e(
+                        "result is success",
+                        "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
+                    )
+                    Log.e("", "exeption: ${exception?.message}")
+                } else {
+                    Log.e("", "response queued")
+                }
             }
     }
 
@@ -517,11 +552,15 @@ class MainActivity : ComponentActivity() {
             .asObject<Any>()
             .withCache(Cache())
             .enqueue { result, exception ->
-                Log.e(
-                    "result is success",
-                    "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
-                )
-                Log.e("", "exeption: ${exception?.message}")
+                if (result is NetraResponse.ResponseReceived<*>) {
+                    Log.e(
+                        "result is success",
+                        "code: ${result?.statusCode.toString()} message: ${result?.statusMessage.toString()} data: ${result?.data.toString()}"
+                    )
+                    Log.e("", "exeption: ${exception?.message}")
+                } else {
+                    Log.e("", "response queued")
+                }
             }
     }
 

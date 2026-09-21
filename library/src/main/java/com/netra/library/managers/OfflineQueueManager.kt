@@ -34,8 +34,9 @@ object OfflineQueueManager {
         dao = NetraDatabase.getDatabase(context).queueDao()
     }
 
-    fun push(netraCall: NetraCall) {
+    fun push(netraCall: NetraCall): Int {
         val jsonConverter = Gson()
+        var queueOrder = 0
         scope.launch {
             val request = netraCall.call.request()
             val converterStr = when (netraCall.converter) {
@@ -54,14 +55,16 @@ object OfflineQueueManager {
                     converterStr,
                 )
             )
+            queueOrder = dao.getAllRequests().size
             ObserverManager.notifyQueuedEvent(
                 QueueEvent.RequestQueued(
                     url = request.url.toString(),
-                    queueOrder = dao.getAllRequests().size,
+                    queueOrder = queueOrder,
                     createdAt = System.currentTimeMillis()
                 )
             )
         }
+        return queueOrder
     }
 
     fun remove(id: String) {
@@ -135,7 +138,7 @@ object OfflineQueueManager {
                         null
                     }
 
-                    val netraResponse = NetraResponse(
+                    val netraResponse = NetraResponse.ResponseReceived(
                         data = convertedResponse,
                         statusCode = okHttpResponse.code,
                         statusMessage = okHttpResponse.message,
