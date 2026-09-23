@@ -6,7 +6,7 @@ import android.content.ContentValues
 import android.database.Cursor
 import android.net.Uri
 import com.netra.library.managers.LifecycleCallbacks
-import com.netra.library.managers.OfflineQueueManager
+import com.netra.library.managers.DeferredRequestManager
 
 class NetraProvider : ContentProvider() {
     override fun delete(
@@ -28,7 +28,7 @@ class NetraProvider : ContentProvider() {
     override fun onCreate(): Boolean {
         val application = context?.applicationContext as Application
 
-        OfflineQueueManager.init(application)
+        DeferredRequestManager.init(application)
         NetraConnectivityManager.getInstance(application).init()
         application.registerActivityLifecycleCallbacks(
             LifecycleCallbacks()

@@ -6,6 +6,7 @@ import android.os.Looper
 import androidx.annotation.RequiresPermission
 import com.google.gson.Gson
 import com.netra.library.enums.Command
+import com.netra.library.enums.DeferredOrigin
 import com.netra.library.enums.NetworkSeverity
 import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
@@ -13,7 +14,7 @@ import com.netra.library.exceptions.NetraException
 import com.netra.library.managers.CacheManager
 import com.netra.library.managers.ObserverManager
 import com.netra.library.managers.CancelRequestManager
-import com.netra.library.managers.OfflineQueueManager
+import com.netra.library.managers.DeferredRequestManager
 import com.netra.library.managers.RetryingCallback
 import com.netra.library.observers.INetraObserver
 import com.netra.library.observers.RequestEvent
@@ -353,7 +354,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
         } else {
             when (offlinePolicyAction) {
                 is OfflinePolicyAction.QUEUE -> {
-                    OfflineQueueManager.push(netraCall)
+                    DeferredRequestManager.enqueueDeferredRequest(netraCall, DeferredOrigin.OFFLINE_QUEUE)
                     onFailure(IOException("Request queued for later execution"))
                 }
 
@@ -478,7 +479,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
         } else {
             when (offlinePolicyAction) {
                 is OfflinePolicyAction.QUEUE -> {
-                    val order = OfflineQueueManager.push(netraCall)
+                    val order = DeferredRequestManager.enqueueDeferredRequest(netraCall, DeferredOrigin.OFFLINE_QUEUE)
                     netraResponse = NetraResponse.ResponseQueued(order)
                 }
 
@@ -628,7 +629,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
         } else {
             when (offlinePolicyAction) {
                 is OfflinePolicyAction.QUEUE -> {
-                    val order = OfflineQueueManager.push(call)
+                    val order = DeferredRequestManager.enqueueDeferredRequest(call, DeferredOrigin.OFFLINE_QUEUE)
                     callback(NetraResponse.ResponseQueued(order), null)
                 }
 

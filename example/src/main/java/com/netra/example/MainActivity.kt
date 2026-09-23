@@ -158,7 +158,7 @@ class MainActivity : ComponentActivity() {
 //            .withCache(Cache())
             .cancelWhenDestroyed()
             .whenSlowNetwork(SlowNetworkPolicyAction.TIMEOUT(2000.milliseconds))
-            .whenOffline(OfflinePolicyAction.USE_CACHE)
+            .whenOffline(OfflinePolicyAction.QUEUE)
             .addObserver(object : INetraObserver {
                 override fun onNetworkChanged(event: NetworkEvent) {
                     Log.e(

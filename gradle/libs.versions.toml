@@ -19,6 +19,7 @@ gson = "2.10.1"
 ksp = "2.0.21-1.0.28"
 room = "2.6.1"
 moshi = "1.15.2"
+work = "2.11.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -46,6 +47,7 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson"}
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
+work = { module = "androidx.work:work-runtime", version.ref = "work"}
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 moshi = { group = "com.squareup.moshi", name = "moshi",  version.ref = "moshi" }
 [plugins]
