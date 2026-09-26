@@ -106,7 +106,7 @@ class MainActivity : ComponentActivity() {
             client.get("/image")
                 .asObject<ByteArray>()
                 .withCache(Cache())
-                .whenOffline(OfflinePolicyAction.USE_CACHE)
+                .whenOffline(OfflinePolicyAction.QUEUE)
                 .cancelWhenDestroyed()
                 .executeStream(
                     onStreamReady = { inputStream ->
@@ -299,8 +299,9 @@ class MainActivity : ComponentActivity() {
             .asList<Repo>()
 //            .withCache(Cache())
             .cancelWhenDestroyed()
+            .background()
             .whenSlowNetwork(SlowNetworkPolicyAction.WAIT(3.seconds))
-            .whenOffline(OfflinePolicyAction.QUEUE)
+//            .whenOffline(OfflinePolicyAction.QUEUE)
             .addObserver(object : INetraObserver {
                 override fun onNetworkChanged(event: NetworkEvent) {
                     Log.e(

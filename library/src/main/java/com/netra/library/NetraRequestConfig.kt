@@ -1,5 +1,6 @@
 package com.netra.library
 
+import com.netra.library.enums.ExecutionMode
 import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
 
@@ -13,5 +14,5 @@ data class NetraRequestConfig(
     val slowNetworkPolicy: SlowNetworkPolicyAction?,
     val cancelOnDispose: Boolean,
     val cache: Cache?,
-
+    val executionMode: ExecutionMode? = ExecutionMode.DIRECT,
 )

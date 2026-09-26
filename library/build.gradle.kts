@@ -70,7 +70,7 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
-
+//val localPublishVersion = "1.0.2-LOCAL"
 publishing {
     publications {
         create<MavenPublication>("release") {
@@ -81,8 +81,17 @@ publishing {
 
             groupId = "com.netra"
             artifactId = "netra"
-            version = "1.0.1"
+            version = "1.0.2"
         }
+//        create<MavenPublication>("local") {
+//            afterEvaluate {
+//                from(components["release"])
+//            }
+//
+//            groupId = "com.netra"
+//            artifactId = "netra"
+//            version = localPublishVersion
+//        }
     }
     repositories {
         maven {

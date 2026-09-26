@@ -11,8 +11,8 @@ interface DeferredDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRequest(request: DeferredRequestEntity)
 
-    @Query("SELECT * FROM deferred_request ORDER BY timestamp ASC")
-    suspend fun getAllRequests(): List<DeferredRequestEntity>
+    @Query("SELECT * FROM deferred_request WHERE status = :status ORDER BY timestamp ASC")
+    suspend fun getAllRequests(status: DeferredStatus): List<DeferredRequestEntity>
 
     @Query("DELETE FROM deferred_request WHERE id = :id")
     suspend fun deleteRequest(id: String)

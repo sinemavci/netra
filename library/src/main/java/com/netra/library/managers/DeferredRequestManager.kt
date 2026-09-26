@@ -22,7 +22,6 @@ import com.netra.library.observers.QueueEvent
 import com.netra.library.database.NetraDatabase
 import com.netra.library.database.DeferredRequestEntity
 import com.netra.library.database.DeferredDao
-import com.netra.library.enums.DeferredOrigin
 import com.netra.library.enums.DeferredStatus
 import com.netra.library.utils.ResponseUtil
 import kotlinx.coroutines.CoroutineScope
@@ -55,20 +54,6 @@ object DeferredRequestManager {
         context: Context,
         params: WorkerParameters
     ) : CoroutineWorker(context, params) {
-//        suspend fun flushMissedResults() {
-//            val resolved = dao.getAllByStatus(
-//                listOf(DeferredStatus.SUCCEEDED, DeferredStatus.FAILED)
-//            )
-//            resolved.forEach { entity ->
-//                NetraEventBridge.emit(
-//                    if (entity.status == DeferredStatus.SUCCEEDED)
-//                        DeferredWorkCompleted(entity.id, entity.cachedResponse)
-//                    else
-//                        DeferredWorkFailed(entity.id, entity.lastError)
-//                )
-//                dao.markAsDelivered(entity.id) // tekrar flush edilmesin
-//            }
-//        }
         override suspend fun doWork(): Result {
             val id = inputData.getString("deferredWorkId") ?: return Result.failure()
             val entity = dao.getRequest(id)
@@ -189,7 +174,7 @@ object DeferredRequestManager {
         }
     }
 
-    fun enqueueDeferredRequest(netraCall: NetraCall, deferredOrigin: DeferredOrigin): Int {
+    fun enqueueDeferredRequest(netraCall: NetraCall): Int {
         val jsonConverter = Gson()
         var queueOrder = 0
         scope.launch {
@@ -200,6 +185,7 @@ object DeferredRequestManager {
                 is NetraKotlinxConverter -> "KOTLINX"
                 else -> null
             }
+
             val entity = DeferredRequestEntity(
                 id = UUID.randomUUID().toString(),
                 url = request.url.toString(),
@@ -207,7 +193,6 @@ object DeferredRequestManager {
                 body = jsonConverter.toJson(request.body),
                 headersJson = jsonConverter.toJson(request.headers.toMultimap()),
                 converterStr,
-                deferredOrigin,
                 DeferredStatus.PENDING,
             )
 
@@ -235,7 +220,7 @@ object DeferredRequestManager {
                 ExistingWorkPolicy.KEEP,
                 requestBuilder
             )
-            queueOrder = dao.getAllRequests().size
+            queueOrder = dao.getAllRequests(DeferredStatus.PENDING).size
             ObserverManager.notifyQueuedEvent(
                 QueueEvent.RequestQueued(
                     url = request.url.toString(),

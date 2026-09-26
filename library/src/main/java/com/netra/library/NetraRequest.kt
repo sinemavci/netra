@@ -6,7 +6,7 @@ import android.os.Looper
 import androidx.annotation.RequiresPermission
 import com.google.gson.Gson
 import com.netra.library.enums.Command
-import com.netra.library.enums.DeferredOrigin
+import com.netra.library.enums.ExecutionMode
 import com.netra.library.enums.NetworkSeverity
 import com.netra.library.enums.OfflinePolicyAction
 import com.netra.library.enums.SlowNetworkPolicyAction
@@ -51,6 +51,7 @@ class NetraRequest<T> @PublishedApi internal constructor(
     private var retriesCount: Int? = null
     private var connectivityManager = NetraConnectivityManager.getInstance(config.context)
     private var isCancelWhenDestroyed = false
+    private var background = false
 
     fun withCache(cache: Cache): NetraRequest<T> {
         if (this.command is Command.Get) {
@@ -58,6 +59,11 @@ class NetraRequest<T> @PublishedApi internal constructor(
             return this
         }
 
+        return this
+    }
+
+    fun background(): NetraRequest<T> {
+        background = true
         return this
     }
 
@@ -321,6 +327,11 @@ class NetraRequest<T> @PublishedApi internal constructor(
         val netraCall =
             NetraCall(config.client.newCall(request), config.converter, isCancelWhenDestroyed)
         CancelRequestManager.add(id, netraCall)
+//        val origin = resolveOrigin()
+//        if (origin == DeferredOrigin.BACKGROUND_TRANSFER || origin == DeferredOrigin.BOTH) {
+//            val order = DeferredRequestManager.enqueueDeferredRequest(netraCall, origin)
+//            return NetraResponse.ResponseQueued(order)
+//        }
 
         if (connectivityManager.isConnected()) {
             if (networkSeverity == NetworkSeverity.NORMAL) {
@@ -354,8 +365,11 @@ class NetraRequest<T> @PublishedApi internal constructor(
         } else {
             when (offlinePolicyAction) {
                 is OfflinePolicyAction.QUEUE -> {
-                    DeferredRequestManager.enqueueDeferredRequest(netraCall, DeferredOrigin.OFFLINE_QUEUE)
-                    onFailure(IOException("Request queued for later execution"))
+//                    DeferredRequestManager.enqueueDeferredRequest(
+//                        netraCall,
+//                        DeferredOrigin.OFFLINE_QUEUE
+//                    )
+//                    netraResponse = NetraResponse.ResponseQueued(order)
                 }
 
                 is OfflinePolicyAction.RETRY -> {
@@ -438,6 +452,10 @@ class NetraRequest<T> @PublishedApi internal constructor(
         val request = getRequest()
         val netraCall =
             NetraCall(config.client.newCall(request), config.converter, isCancelWhenDestroyed)
+        if (background) {
+            val order = DeferredRequestManager.enqueueDeferredRequest(netraCall)
+            return NetraResponse.ResponseQueued(order)
+        }
 
         if (connectivityManager.isConnected()) {
             if (networkSeverity == NetworkSeverity.NORMAL) {
@@ -479,8 +497,8 @@ class NetraRequest<T> @PublishedApi internal constructor(
         } else {
             when (offlinePolicyAction) {
                 is OfflinePolicyAction.QUEUE -> {
-                    val order = DeferredRequestManager.enqueueDeferredRequest(netraCall, DeferredOrigin.OFFLINE_QUEUE)
-                    netraResponse = NetraResponse.ResponseQueued(order)
+                    val order = DeferredRequestManager.enqueueDeferredRequest(netraCall)
+                    return NetraResponse.ResponseQueued(order)
                 }
 
                 is OfflinePolicyAction.RETRY -> {
@@ -579,6 +597,12 @@ class NetraRequest<T> @PublishedApi internal constructor(
         val call =
             NetraCall(config.client.newCall(request), config.converter, isCancelWhenDestroyed)
 
+        if (background) {
+            val order = DeferredRequestManager.enqueueDeferredRequest(call)
+            callback(NetraResponse.ResponseQueued(order), null)
+            return
+        }
+
         if (isConnected) {
             if (networkSeverity == NetworkSeverity.NORMAL) {
                 enqueueCommand(call, callback)
@@ -629,8 +653,9 @@ class NetraRequest<T> @PublishedApi internal constructor(
         } else {
             when (offlinePolicyAction) {
                 is OfflinePolicyAction.QUEUE -> {
-                    val order = DeferredRequestManager.enqueueDeferredRequest(call, DeferredOrigin.OFFLINE_QUEUE)
+                    val order = DeferredRequestManager.enqueueDeferredRequest(call)
                     callback(NetraResponse.ResponseQueued(order), null)
+                    return
                 }
 
                 is OfflinePolicyAction.RETRY -> {
@@ -688,7 +713,8 @@ class NetraRequest<T> @PublishedApi internal constructor(
             slowNetworkPolicy = slowNetworkPolicyAction,
             cancelOnDispose = isCancelWhenDestroyed,
             cache = cacheManager.cache,
-            body = command.body
+            body = command.body,
+            executionMode = if (background) ExecutionMode.GUARANTEED else ExecutionMode.DIRECT
         )
     }
 
