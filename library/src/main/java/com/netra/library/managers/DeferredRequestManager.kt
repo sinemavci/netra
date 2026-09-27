@@ -45,8 +45,8 @@ object DeferredRequestManager {
 
     const val MAX_RETRIES = 3
 
-    fun init(context: Context) {
-        dao = NetraDatabase.getDatabase(context).deferredDao()
+    fun init(context: Context, database: NetraDatabase = NetraDatabase.getDatabase(context)) {
+        dao = database.deferredDao()
         applicationContext = context
     }
 
@@ -56,7 +56,7 @@ object DeferredRequestManager {
     ) : CoroutineWorker(context, params) {
         override suspend fun doWork(): Result {
             val id = inputData.getString("deferredWorkId") ?: return Result.failure()
-            val entity = dao.getRequest(id)
+            val entity = dao.getRequest(id)?: return Result.failure()
             val gson = Gson()
 
             if (entity.status == DeferredStatus.SUCCEEDED) return Result.success()
@@ -174,61 +174,52 @@ object DeferredRequestManager {
         }
     }
 
-    fun enqueueDeferredRequest(netraCall: NetraCall): Int {
+    suspend fun enqueueDeferredRequest(netraCall: NetraCall): Int {
         val jsonConverter = Gson()
-        var queueOrder = 0
-        scope.launch {
-            val request = netraCall.call.request()
-            val converterStr = when (netraCall.converter) {
-                is NetraGsonConverter -> "GSON"
-                is NetraMoshiConverter -> "MOSHI"
-                is NetraKotlinxConverter -> "KOTLINX"
-                else -> null
-            }
-
-            val entity = DeferredRequestEntity(
-                id = UUID.randomUUID().toString(),
-                url = request.url.toString(),
-                method = request.method,
-                body = jsonConverter.toJson(request.body),
-                headersJson = jsonConverter.toJson(request.headers.toMultimap()),
-                converterStr,
-                DeferredStatus.PENDING,
-            )
-
-            dao.insertRequest(entity)
-
-            val constraints = androidx.work.Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
-
-            val inputData = workDataOf(
-                "deferredWorkId" to entity.id
-            )
-            val requestBuilder = OneTimeWorkRequestBuilder<NetraTransferWorker>()
-                .setConstraints(constraints)
-                .setInputData(inputData)
-                .setBackoffCriteria(
-                    BackoffPolicy.EXPONENTIAL,
-                    WorkRequest.MIN_BACKOFF_MILLIS,
-                    TimeUnit.MILLISECONDS
-                )
-                .addTag("netra_deferred_work")
-                .build()
-            WorkManager.getInstance(applicationContext).enqueueUniqueWork(
-                entity.id,
-                ExistingWorkPolicy.KEEP,
-                requestBuilder
-            )
-            queueOrder = dao.getAllRequests(DeferredStatus.PENDING).size
-            ObserverManager.notifyQueuedEvent(
-                QueueEvent.RequestQueued(
-                    url = request.url.toString(),
-                    queueOrder = queueOrder,
-                    createdAt = System.currentTimeMillis()
-                )
-            )
+        val request = netraCall.call.request()
+        val converterStr = when (netraCall.converter) {
+            is NetraGsonConverter -> "GSON"
+            is NetraMoshiConverter -> "MOSHI"
+            is NetraKotlinxConverter -> "KOTLINX"
+            else -> null
         }
+
+        val entity = DeferredRequestEntity(
+            id = UUID.randomUUID().toString(),
+            url = request.url.toString(),
+            method = request.method,
+            body = jsonConverter.toJson(request.body),
+            headersJson = jsonConverter.toJson(request.headers.toMultimap()),
+            converterStr,
+            DeferredStatus.PENDING,
+        )
+
+        dao.insertRequest(entity)   // gerçekten bitene kadar burada askıda kalır
+
+        val constraints = androidx.work.Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val requestBuilder = OneTimeWorkRequestBuilder<NetraTransferWorker>()
+            .setConstraints(constraints)
+            .setInputData(workDataOf("deferredWorkId" to entity.id))
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, WorkRequest.MIN_BACKOFF_MILLIS, TimeUnit.MILLISECONDS)
+            .addTag("netra_deferred_work")
+            .build()
+
+        WorkManager.getInstance(applicationContext)
+            .enqueueUniqueWork(entity.id, ExistingWorkPolicy.KEEP, requestBuilder)
+
+        val queueOrder = dao.getAllPendingRequests(DeferredStatus.PENDING).size
+
+        ObserverManager.notifyQueuedEvent(
+            QueueEvent.RequestQueued(
+                url = request.url.toString(),
+                queueOrder = queueOrder,
+                createdAt = System.currentTimeMillis()
+            )
+        )
+
         return queueOrder
     }
 }

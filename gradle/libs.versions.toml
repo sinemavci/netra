@@ -20,11 +20,25 @@ ksp = "2.0.21-1.0.28"
 room = "2.6.1"
 moshi = "1.15.2"
 work = "2.11.2"
+mockk = "1.13.11"
+coroutines-test = "1.8.1"
+core-testing = "2.2.0"
+room-testing = "2.6.1"
+work-testing = "2.9.0"
+truth = "1.4.2"
+mockwebserver = "4.12.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-multidex = { module = "androidx.multidex:multidex", version.ref = "multidex" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
+mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "mockwebserver" }
+work-testing = { group = "androidx.work", name = "work-testing", version.ref = "work-testing" }
+coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines-test" }
+core-testing = { group = "androidx.arch.core", name = "core-testing", version.ref = "core-testing" }
+room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room-testing" }
+truth = { group = "com.google.truth", name = "truth", version.ref = "truth" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }

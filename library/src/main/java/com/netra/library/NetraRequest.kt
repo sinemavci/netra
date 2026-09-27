@@ -19,8 +19,11 @@ import com.netra.library.managers.RetryingCallback
 import com.netra.library.observers.INetraObserver
 import com.netra.library.observers.RequestEvent
 import com.netra.library.utils.ResponseUtil
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
@@ -37,6 +40,10 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.String
 import kotlin.time.Duration.Companion.milliseconds
+
+internal object NetraCoroutineScope {
+    val io = CoroutineScope(Dispatchers.IO + SupervisorJob())
+}
 
 class NetraRequest<T> @PublishedApi internal constructor(
     @PublishedApi internal val config: NetraClientConfig,
@@ -598,8 +605,10 @@ class NetraRequest<T> @PublishedApi internal constructor(
             NetraCall(config.client.newCall(request), config.converter, isCancelWhenDestroyed)
 
         if (background) {
-            val order = DeferredRequestManager.enqueueDeferredRequest(call)
-            callback(NetraResponse.ResponseQueued(order), null)
+            NetraCoroutineScope.io.launch {
+                val order = DeferredRequestManager.enqueueDeferredRequest(call)
+                callback(NetraResponse.ResponseQueued(order), null)
+            }
             return
         }
 
@@ -653,8 +662,10 @@ class NetraRequest<T> @PublishedApi internal constructor(
         } else {
             when (offlinePolicyAction) {
                 is OfflinePolicyAction.QUEUE -> {
-                    val order = DeferredRequestManager.enqueueDeferredRequest(call)
-                    callback(NetraResponse.ResponseQueued(order), null)
+                    NetraCoroutineScope.io.launch {
+                        val order = DeferredRequestManager.enqueueDeferredRequest(call)
+                        callback(NetraResponse.ResponseQueued(order), null)
+                    }
                     return
                 }
 

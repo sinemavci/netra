@@ -67,7 +67,14 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.multidex)
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.core.testing)
+    androidTestImplementation(libs.coroutines.test)
+    androidTestImplementation(libs.truth)
+    androidTestImplementation(libs.mockwebserver)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.room.testing)
+    androidTestImplementation(libs.work.testing)
     androidTestImplementation(libs.androidx.espresso.core)
 }
 //val localPublishVersion = "1.0.2-LOCAL"
